@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PasswordField } from "@/components/ui/PasswordField";
 import { api, errMsg } from "@/lib/client";
 
 export default function SignupPage() {
@@ -36,13 +37,13 @@ export default function SignupPage() {
     <>
       <h2 className="text-[26px] font-semibold tracking-tight">Criar conta</h2>
       <p className="mt-1.5 text-[14px] text-muted">
-        Leva menos de um minuto. Seu primeiro mês já vem com as tabelas mais comuns.
+        Leva menos de um minuto. Uma conta serve para o casal: depois vocês cadastram quem é quem.
       </p>
 
       <form onSubmit={submit} className="mt-8 space-y-4" noValidate>
         <div>
           <label htmlFor="name" className="label">
-            Nome
+            Seu nome
           </label>
           <input
             id="name"
@@ -69,35 +70,18 @@ export default function SignupPage() {
             placeholder="voce@email.com"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label htmlFor="password" className="label">
               Senha
             </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              className="field"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <PasswordField id="password" autoComplete="new-password" minLength={8} value={password} onChange={setPassword} />
           </div>
           <div>
             <label htmlFor="confirm" className="label">
               Repetir senha
             </label>
-            <input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              required
-              className="field"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-            />
+            <PasswordField id="confirm" autoComplete="new-password" value={confirm} onChange={setConfirm} />
           </div>
         </div>
         <p className="-mt-2 text-xs text-muted">Use pelo menos 8 caracteres.</p>

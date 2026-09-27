@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PasswordField } from "@/components/ui/PasswordField";
 import { api, errMsg } from "@/lib/client";
 
 export default function LoginPage() {
@@ -28,8 +29,8 @@ export default function LoginPage() {
 
   return (
     <>
-      <h2 className="text-[26px] font-semibold tracking-tight">Entrar</h2>
-      <p className="mt-1.5 text-[14px] text-muted">Abra sua planilha e continue de onde parou.</p>
+      <h2 className="text-[26px] font-semibold tracking-tight">Olá de novo</h2>
+      <p className="mt-1.5 text-[14px] text-muted">Entre para abrir a planilha da casa e continuar de onde parou.</p>
 
       <form onSubmit={submit} className="mt-8 space-y-4" noValidate>
         <div>
@@ -52,15 +53,7 @@ export default function LoginPage() {
           <label htmlFor="password" className="label">
             Senha
           </label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            className="field"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <PasswordField id="password" autoComplete="current-password" value={password} onChange={setPassword} />
         </div>
         {error && (
           <p role="alert" className="border border-expense/30 bg-red-50 px-3 py-2 text-[13px] text-expense">

@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "Finance Flow", template: "%s · Finance Flow" },
   description:
-    "Controle financeiro pessoal em tabelas conectadas: salário, contas, cartão, lazer e cofrinho no mesmo lugar.",
+    "Controle financeiro do casal em tabelas conectadas: salários, contas da casa, cartão, economias, painel com gráficos e avisos antes do vermelho.",
 };
 
 export const viewport: Viewport = {
