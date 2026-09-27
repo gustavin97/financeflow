@@ -94,7 +94,7 @@ export function NewBlockDialog({
   }
 
   return (
-    <Modal title="Nova tabela" onClose={onClose} width="max-w-xl">
+    <Modal title="Nova tabela" onClose={onClose} width="max-w-2xl">
       <form onSubmit={submit} className="space-y-4">
         <div>
           <span className="label">Tipo de tabela</span>
@@ -117,8 +117,8 @@ export function NewBlockDialog({
                 >
                   <span className="mt-1 h-3 w-3 shrink-0" style={{ background: m.color }} />
                   <span>
-                    <span className="block text-[13px] font-semibold">{m.label}</span>
-                    <span className="block text-xs text-muted">{m.hint}</span>
+                    <span className="block text-[15px] font-semibold">{m.label}</span>
+                    <span className="block text-[14px] text-muted">{m.hint}</span>
                   </span>
                 </button>
               );
@@ -145,7 +145,7 @@ export function NewBlockDialog({
               ))}
             </select>
           ) : (
-            <p className="text-[13px] text-muted">
+            <p className="text-[15px] text-muted">
               Ainda não há pessoas cadastradas, então a tabela é da casa.{" "}
               <button type="button" className="font-medium text-brand hover:underline" onClick={onManageMembers}>
                 Cadastrar marido, esposa...
@@ -173,13 +173,13 @@ export function NewBlockDialog({
                     onChange={() => setModel(m.v)}
                   />
                   <span>
-                    <span className="block text-[13px] font-semibold">{m.label}</span>
-                    <span className="block text-xs text-muted">{m.hint}</span>
+                    <span className="block text-[15px] font-semibold">{m.label}</span>
+                    <span className="block text-[14px] text-muted">{m.hint}</span>
                   </span>
                 </label>
               ))}
             </div>
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-2 text-[14px] text-muted">
               Depois você pode adicionar linhas apontando para qualquer tabela, pessoa ou saldo, somando ou
               subtraindo.
             </p>
@@ -220,14 +220,14 @@ export function NewBlockDialog({
             placeholder={kind === "total" ? models.find((m) => m.v === model)!.name : "Ex.: Mercado"}
           />
           {preset && (
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-[14px] text-muted">
               Vem com as colunas:{" "}
               {BLOCK_PRESETS.find((p) => p.name === preset)?.columns?.map((c) => c.name).join(", ") || "nenhuma extra"}
             </p>
           )}
         </div>
 
-        {error && <p className="text-[13px] text-expense">{error}</p>}
+        {error && <p className="text-[15px] text-expense">{error}</p>}
         <div className="flex justify-end gap-2 pt-1">
           <button type="button" className="btn" onClick={onClose}>
             Cancelar
@@ -331,7 +331,7 @@ export function BlockSettingsDialog({
             ))}
           </select>
           {!members.length && (
-            <p className="mt-1 text-xs text-muted">Cadastre as pessoas em “Pessoas” no topo da planilha.</p>
+            <p className="mt-1 text-[14px] text-muted">Cadastre as pessoas em “Pessoas” no topo da planilha.</p>
           )}
         </div>
         {hasSource && (
@@ -340,7 +340,7 @@ export function BlockSettingsDialog({
               De onde sai o dinheiro?
             </label>
             <RefSelect id="set-source" value={source} groups={groups} onChange={setSource} emptyLabel={`Padrão: ${def}`} />
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-[14px] text-muted">
               A coluna “Saldo” começa com esse valor e vai descontando cada linha. Tabelas que usam a mesma origem
               continuam a conta uma da outra, na ordem da planilha. O limite em % também é calculado sobre ela.
             </p>

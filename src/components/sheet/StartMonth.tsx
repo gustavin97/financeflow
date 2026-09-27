@@ -71,10 +71,10 @@ export function StartMonth({
     });
 
   return (
-    <div className="mx-auto mt-6 max-w-2xl border border-grid bg-white shadow-sheet">
+    <div className="mx-auto mt-8 max-w-3xl border border-grid bg-white shadow-sheet">
       <div className="border-b border-grid bg-head px-5 py-3">
-        <h2 className="text-[15px] font-semibold">Como quer começar {ymLabel(ym)}?</h2>
-        <p className="mt-0.5 text-[13px] text-muted">Você pode mudar tudo depois, tabela por tabela.</p>
+        <h2 className="text-[17px] font-semibold">Como quer começar {ymLabel(ym)}?</h2>
+        <p className="mt-0.5 text-[15px] text-muted">Você pode mudar tudo depois, tabela por tabela.</p>
       </div>
       <ul className="divide-y divide-grid">
         {options
@@ -88,11 +88,11 @@ export function StartMonth({
               >
                 <span className={`mt-0.5 ${o.primary ? "text-brand" : "text-muted"}`}>{o.icon}</span>
                 <span className="flex-1">
-                  <span className="block text-[14px] font-semibold">
+                  <span className="block text-[16px] font-semibold">
                     {o.title}
-                    {busy === o.mode && <span className="ml-2 text-xs font-normal text-muted">Preparando...</span>}
+                    {busy === o.mode && <span className="ml-2 text-[14px] font-normal text-muted">Preparando...</span>}
                   </span>
-                  <span className="mt-0.5 block text-[13px] text-muted">{o.text}</span>
+                  <span className="mt-0.5 block text-[15px] text-muted">{o.text}</span>
                 </span>
               </button>
             </li>

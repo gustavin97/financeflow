@@ -23,13 +23,13 @@ function Cell({
 }) {
   return (
     <div className="bg-white px-4 py-3">
-      <p className="text-[12.5px] font-medium text-muted">{label}</p>
-      <p className="mt-0.5 text-[23px] font-semibold leading-tight tracking-tight" style={{ color }}>
+      <p className="text-[14.5px] font-medium text-muted">{label}</p>
+      <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight tracking-tight" style={{ color }}>
         {fmtBRL(value)}
       </p>
       <div className="mt-1 space-y-0.5">
         {lines.map((l) => (
-          <p key={l} className="text-[12px] text-muted">
+          <p key={l} className="text-[14px] text-muted">
             {l}
           </p>
         ))}
@@ -102,10 +102,10 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
 
   return (
     <div className="overflow-x-auto border border-grid bg-white shadow-sheet">
-      <table className="sheet" style={{ minWidth: 820 }}>
+      <table className="sheet" style={{ minWidth: 960 }}>
         <thead>
           <tr>
-            <th style={{ width: 170 }}>Por pessoa</th>
+            <th style={{ width: 220 }}>Por pessoa</th>
             <th className="!text-right">Receitas</th>
             <th className="!text-right">Despesas próprias</th>
             <th className="!text-right">Economias</th>
@@ -123,7 +123,7 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
                 <span className="flex items-center gap-2 font-medium">
                   <span className="h-2.5 w-2.5 shrink-0" style={{ background: r.color }} />
                   {r.name}
-                  <span className="text-[11.5px] font-normal text-muted">{fmtPct(r.ratio)} da renda</span>
+                  <span className="text-[13.5px] font-normal text-muted">{fmtPct(r.ratio)} da renda</span>
                 </span>
               </td>
               <td className="!px-2 text-right">{fmtNum(r.s.income)}</td>

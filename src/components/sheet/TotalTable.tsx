@@ -44,7 +44,7 @@ export function TotalTable({
       style={{ borderTop: `3px solid ${meta.color}` }}
       aria-label={`Tabela ${block.name}`}
     >
-      <div className="flex h-10 items-center border-b border-grid">
+      <div className="flex h-12 items-center border-b border-grid">
         <div className="min-w-0 flex-1">
           <TextCell
             bold
@@ -58,14 +58,14 @@ export function TotalTable({
             <MemberTag member={owner} />
           </button>
         )}
-        <span className="hidden items-center gap-1.5 px-2 text-[12px] font-medium sm:flex" style={{ color: meta.color }}>
+        <span className="hidden items-center gap-1.5 px-2 text-[14px] font-medium sm:flex" style={{ color: meta.color }}>
           <span className="h-2 w-2" style={{ background: meta.color }} />
           {meta.label}
         </span>
-        <span className="whitespace-nowrap px-2 text-[14px] font-semibold" style={{ color: total < 0 ? "#c4361f" : undefined }}>
+        <span className="whitespace-nowrap px-2 text-[16px] font-semibold" style={{ color: total < 0 ? "#c4361f" : undefined }}>
           {fmtBRL(total)}
         </span>
-        <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={16} />}>
+        <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={18} />}>
           <MenuItem onClick={() => setSettings(true)}>Dono da tabela</MenuItem>
           <div className="my-1 border-t border-grid" />
           <MenuItem
@@ -80,14 +80,14 @@ export function TotalTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="sheet" style={{ minWidth: 36 + 56 + 150 + 220 + 128 + 34 }}>
+        <table className="sheet" style={{ minWidth: 42 + 66 + 180 + 260 + 152 + 40 }}>
           <colgroup>
-            <col style={{ width: 36 }} />
-            <col style={{ width: 56 }} />
+            <col style={{ width: 42 }} />
+            <col style={{ width: 66 }} />
             <col />
-            <col style={{ width: 220 }} />
-            <col style={{ width: 128 }} />
-            <col style={{ width: 34 }} />
+            <col style={{ width: 260 }} />
+            <col style={{ width: 152 }} />
+            <col style={{ width: 40 }} />
           </colgroup>
           <thead>
             <tr>
@@ -108,16 +108,16 @@ export function TotalTable({
                   <td className="gutter">
                     <span className="group-hover:hidden">{i + 1}</span>
                     <button
-                      className="hidden h-[31px] w-full items-center justify-center text-faint hover:bg-red-50 hover:text-expense group-hover:flex focus-visible:flex"
+                      className="hidden h-[37px] w-full items-center justify-center text-faint hover:bg-red-50 hover:text-expense group-hover:flex focus-visible:flex"
                       aria-label={`Excluir linha ${i + 1}`}
                       onClick={() => actions.removeEntry(block.id, e.id)}
                     >
-                      <X size={13} />
+                      <X size={15} />
                     </button>
                   </td>
                   <td className="!p-0">
                     <button
-                      className="flex h-[31px] w-full items-center justify-center text-[15px] font-semibold hover:bg-head"
+                      className="flex h-[37px] w-full items-center justify-center text-[17px] font-semibold hover:bg-head"
                       style={{ color: e.sign === -1 ? "#c4361f" : "#107c41" }}
                       aria-label={e.sign === -1 ? "Subtrai (clique para somar)" : "Soma (clique para subtrair)"}
                       title="Clique para trocar entre somar e subtrair"
@@ -155,7 +155,7 @@ export function TotalTable({
                   <td>
                     {e.ref ? (
                       <span
-                        className="block px-2 text-right leading-[31px]"
+                        className="block px-2 text-right leading-[37px]"
                         style={{ color: value < 0 ? "#c4361f" : undefined }}
                         title="Calculado automaticamente"
                       >
@@ -172,7 +172,7 @@ export function TotalTable({
             {block.entries.length === 0 && (
               <tr>
                 <td className="gutter" />
-                <td colSpan={4} className="!px-2 text-[13px] text-faint">
+                <td colSpan={4} className="!px-2 text-[15px] text-faint">
                   Adicione linhas apontando para outras tabelas, pessoas ou saldos.
                 </td>
                 <td />
@@ -183,9 +183,9 @@ export function TotalTable({
               <td colSpan={4} className="!p-0">
                 <button
                   onClick={() => actions.addEntry(block.id)}
-                  className="flex h-[31px] w-full items-center gap-1.5 px-2 text-[13px] font-medium text-brand hover:bg-brand-soft"
+                  className="flex h-[37px] w-full items-center gap-1.5 px-2 text-[15px] font-medium text-brand hover:bg-brand-soft"
                 >
-                  <Plus size={14} /> Nova linha
+                  <Plus size={16} /> Nova linha
                 </button>
               </td>
               <td />
@@ -206,8 +206,8 @@ export function TotalTable({
       </div>
 
       {cyclic && (
-        <div className="flex items-center gap-2 border-t border-grid bg-[#fff7e6] px-3 py-1.5 text-[12px] text-[#9a5b00]">
-          <AlertTriangle size={14} /> Esta tabela depende dela mesma (referência circular). A linha em círculo conta como zero.
+        <div className="flex items-center gap-2 border-t border-grid bg-[#fff7e6] px-3 py-1.5 text-[14px] text-[#9a5b00]">
+          <AlertTriangle size={16} /> Esta tabela depende dela mesma (referência circular). A linha em círculo conta como zero.
         </div>
       )}
 

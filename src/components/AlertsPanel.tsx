@@ -28,8 +28,8 @@ export function AlertsPanel({ alerts, max = 3 }: { alerts: FinAlert[]; max?: num
       aria-label="Sinalizadores do mês"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-grid px-3 py-2">
-        <h2 className="text-[13px] font-semibold">Sinalizadores do mês</h2>
-        <p className="text-[12px] text-muted">
+        <h2 className="text-[15px] font-semibold">Sinalizadores do mês</h2>
+        <p className="text-[14px] text-muted">
           {counts.danger > 0 && (
             <span className="font-semibold" style={{ color: STYLE.danger.color }}>
               {counts.danger} {counts.danger === 1 ? "alerta" : "alertas"}
@@ -49,12 +49,12 @@ export function AlertsPanel({ alerts, max = 3 }: { alerts: FinAlert[]; max?: num
           const Icon = st.icon;
           return (
             <li key={a.id} className="flex items-start gap-2.5 px-3 py-2" style={{ background: st.bg }}>
-              <Icon size={16} className="mt-0.5 shrink-0" style={{ color: st.color }} aria-label={st.label} />
+              <Icon size={18} className="mt-0.5 shrink-0" style={{ color: st.color }} aria-label={st.label} />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold" style={{ color: st.color }}>
+                <p className="text-[15px] font-semibold" style={{ color: st.color }}>
                   {a.title}
                 </p>
-                {a.detail && <p className="text-[12.5px] text-muted">{a.detail}</p>}
+                {a.detail && <p className="text-[14.5px] text-muted">{a.detail}</p>}
               </div>
             </li>
           );
@@ -62,7 +62,7 @@ export function AlertsPanel({ alerts, max = 3 }: { alerts: FinAlert[]; max?: num
       </ul>
       {alerts.length > max && (
         <button
-          className="w-full border-t border-grid px-3 py-1.5 text-left text-[12.5px] font-medium text-brand hover:bg-brand-soft"
+          className="w-full border-t border-grid px-3 py-1.5 text-left text-[14.5px] font-medium text-brand hover:bg-brand-soft"
           onClick={() => setOpen(!open)}
         >
           {open ? "Mostrar menos" : `Ver mais ${alerts.length - max}`}

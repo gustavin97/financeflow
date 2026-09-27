@@ -66,22 +66,22 @@ export default function GoalsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1200px] px-3 pb-10 pt-4 sm:px-5">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight">Cofrinho</h1>
-          <p className="mt-0.5 max-w-xl text-[13px] text-muted">
+          <h1 className="text-[26px] font-semibold tracking-tight">Cofrinho</h1>
+          <p className="mt-0.5 max-w-xl text-[15px] text-muted">
             Metas de longo prazo. Cada linha das tabelas de cofrinho, na planilha mensal, aponta para
             uma meta e soma aqui automaticamente.
           </p>
         </div>
-        <button className="btn btn-primary h-9" onClick={() => setEditing("new")}>
-          <Plus size={15} /> Nova meta
+        <button className="btn btn-primary h-11" onClick={() => setEditing("new")}>
+          <Plus size={17} /> Nova meta
         </button>
       </div>
 
       {error && (
-        <p role="alert" className="mb-4 border border-expense/30 bg-red-50 px-3 py-2 text-[13px] text-expense">
+        <p role="alert" className="mb-4 border border-expense/30 bg-red-50 px-3 py-2 text-[15px] text-expense">
           {error}
         </p>
       )}
@@ -91,13 +91,13 @@ export default function GoalsPage() {
       {goals && goals.length === 0 && (
         <div className="border border-grid bg-white px-6 py-12 text-center shadow-sheet">
           <PiggyBank className="mx-auto text-brand" size={30} />
-          <h2 className="mt-3 text-[16px] font-semibold">Qual é a sua primeira meta?</h2>
-          <p className="mx-auto mt-1 max-w-md text-[13px] text-muted">
+          <h2 className="mt-3 text-[18px] font-semibold">Qual é a sua primeira meta?</h2>
+          <p className="mx-auto mt-1 max-w-md text-[15px] text-muted">
             Apartamento, carro, viagem ou reserva de emergência. Defina o valor e acompanhe quanto já
             foi guardado mês a mês.
           </p>
-          <button className="btn btn-primary mt-5 h-9" onClick={() => setEditing("new")}>
-            <Plus size={15} /> Criar meta
+          <button className="btn btn-primary mt-5 h-11" onClick={() => setEditing("new")}>
+            <Plus size={17} /> Criar meta
           </button>
         </div>
       )}
@@ -116,8 +116,8 @@ export default function GoalsPage() {
               },
             ].map((c) => (
               <div key={c.l} className="bg-white px-4 py-3">
-                <p className="text-[12.5px] font-medium text-muted">{c.l}</p>
-                <p className="mt-0.5 text-[23px] font-semibold leading-tight" style={{ color: c.c }}>
+                <p className="text-[14.5px] font-medium text-muted">{c.l}</p>
+                <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight" style={{ color: c.c }}>
                   {c.v}
                 </p>
               </div>
@@ -162,12 +162,12 @@ export default function GoalsPage() {
                       <tr className="hover:bg-[#f6faf7]">
                         <td className="gutter">
                           <button
-                            className="flex h-8 w-full items-center justify-center text-muted hover:text-ink"
+                            className="flex h-10 w-full items-center justify-center text-muted hover:text-ink"
                             onClick={() => setOpen(isOpen ? null : g.id)}
                             aria-expanded={isOpen}
                             aria-label={`Ver aportes de ${g.name}`}
                           >
-                            {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                           </button>
                         </td>
                         <td className="!px-2 font-semibold">
@@ -185,14 +185,14 @@ export default function GoalsPage() {
                             <div className="h-[8px] flex-1 bg-[#e3e7eb]" role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={`Progresso de ${g.name}`}>
                               <div className="h-full" style={{ width: `${pct * 100}%`, background: g.color }} />
                             </div>
-                            <span className="w-9 text-right text-[12px] font-semibold">{fmtPct(pct)}</span>
+                            <span className="w-11 text-right text-[14px] font-semibold">{fmtPct(pct)}</span>
                           </div>
                         </td>
                         <td className="!px-2 text-right">{g.monthlyAvg ? fmtNum(g.monthlyAvg) : <span className="text-faint">0,00</span>}</td>
                         <td className="!px-2">
                           <span className={p.forecast === "Meta atingida" ? "font-semibold text-brand" : ""}>{p.forecast}</span>
                           {g.targetMonth && isYm(g.targetMonth) && p.remaining > 0 && (
-                            <span className="block text-[11px] leading-tight text-muted">
+                            <span className="block text-[13px] leading-tight text-muted">
                               Prazo: {ymShort(g.targetMonth)}
                               {p.needed ? `, precisa de ${fmtBRL(p.needed)}/mês` : ""}
                             </span>
@@ -200,11 +200,11 @@ export default function GoalsPage() {
                         </td>
                         <td>
                           <div className="flex justify-end">
-                            <button className="btn btn-ghost h-8 w-8 px-0" onClick={() => setEditing(g)} aria-label={`Editar ${g.name}`}>
-                              <Pencil size={14} />
+                            <button className="btn btn-ghost h-10 w-10 px-0" onClick={() => setEditing(g)} aria-label={`Editar ${g.name}`}>
+                              <Pencil size={16} />
                             </button>
-                            <button className="btn btn-ghost h-8 w-8 px-0 text-expense" onClick={() => remove(g)} aria-label={`Excluir ${g.name}`}>
-                              <Trash2 size={14} />
+                            <button className="btn btn-ghost h-10 w-10 px-0 text-expense" onClick={() => remove(g)} aria-label={`Excluir ${g.name}`}>
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </td>
@@ -214,14 +214,14 @@ export default function GoalsPage() {
                           <td className="gutter" />
                           <td colSpan={8} className="!bg-[#fafbfb] !p-3">
                             {g.history.length === 0 ? (
-                              <p className="text-[13px] text-muted">
+                              <p className="text-[15px] text-muted">
                                 Nenhum aporte ainda. Na planilha do mês, escolha esta meta na coluna “Meta” de uma
                                 tabela de cofrinho.
                               </p>
                             ) : (
-                              <table className="w-full max-w-md text-[13px]">
+                              <table className="w-full max-w-md text-[15px]">
                                 <thead>
-                                  <tr className="text-left text-[12px] text-muted">
+                                  <tr className="text-left text-[14px] text-muted">
                                     <th className="py-1 font-medium">Mês</th>
                                     <th className="py-1 text-right font-medium">Aporte</th>
                                     <th className="py-1 text-right font-medium">Já guardado</th>
@@ -252,7 +252,7 @@ export default function GoalsPage() {
               </tbody>
             </table>
           </div>
-          <p className="text-[12.5px] text-muted">
+          <p className="text-[14.5px] text-muted">
             O ritmo por mês é a média dos últimos três meses com aportes. “Guardado” conta só o que foi
             marcado como guardado; “Previsto” ainda está pendente.
           </p>
@@ -358,7 +358,7 @@ function GoalDialog({
             ))}
           </div>
         </div>
-        {error && <p className="text-[13px] text-expense">{error}</p>}
+        {error && <p className="text-[15px] text-expense">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn" onClick={onClose}>
             Cancelar

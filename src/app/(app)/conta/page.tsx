@@ -14,7 +14,7 @@ function Msg({ f }: { f: Flash }) {
   return (
     <p
       role={f.kind === "err" ? "alert" : "status"}
-      className={`text-[13px] ${f.kind === "err" ? "text-expense" : "font-medium text-brand"}`}
+      className={`text-[15px] ${f.kind === "err" ? "text-expense" : "font-medium text-brand"}`}
     >
       {f.text}
     </p>
@@ -25,8 +25,8 @@ function Panel({ title, text, children }: { title: string; text?: string; childr
   return (
     <section className="border border-grid bg-white shadow-sheet">
       <div className="border-b border-grid bg-head px-4 py-2.5">
-        <h2 className="text-[14px] font-semibold">{title}</h2>
-        {text && <p className="text-[12.5px] text-muted">{text}</p>}
+        <h2 className="text-[16px] font-semibold">{title}</h2>
+        {text && <p className="text-[14.5px] text-muted">{text}</p>}
       </div>
       <div className="p-4">{children}</div>
     </section>
@@ -89,9 +89,9 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[640px] px-3 pb-10 pt-4 sm:px-5">
-      <h1 className="mb-4 text-[22px] font-semibold tracking-tight">Minha conta</h1>
-      <div className="space-y-4">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-5">
+      <h1 className="mb-4 text-[26px] font-semibold tracking-tight">Minha conta</h1>
+      <div className="grid items-start gap-5 xl:grid-cols-2">
         <Panel title="Perfil">
           <form onSubmit={saveName} className="space-y-3">
             <div>
@@ -110,7 +110,7 @@ export default function AccountPage() {
         </Panel>
 
         <Panel title="Pessoas da casa" text="Quem divide as contas. Cada tabela pode ser de uma pessoa ou do conjunto.">
-          {members ? <MembersEditor members={members} onChange={setMembers} /> : <div className="h-9" />}
+          {members ? <MembersEditor members={members} onChange={setMembers} /> : <div className="h-11" />}
         </Panel>
 
         <Panel title="Senha">
@@ -134,7 +134,7 @@ export default function AccountPage() {
 
         <Panel title="Seus dados" text="Baixe tudo o que você registrou: tabelas, lançamentos e metas.">
           <a href="/api/export" className="btn">
-            <Download size={14} /> Exportar em JSON
+            <Download size={16} /> Exportar em JSON
           </a>
         </Panel>
 

@@ -54,25 +54,25 @@ export default function AnnualPage() {
   const spendTotal = spendCats.reduce((s, c) => s + c.total, 0);
 
   return (
-    <div className="mx-auto max-w-[1200px] px-3 pb-10 pt-4 sm:px-5">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-12 pt-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight">Visão anual</h1>
-          <p className="mt-0.5 text-[13px] text-muted">Os 12 meses lado a lado, com o saldo acumulado ao longo do ano.</p>
+          <h1 className="text-[26px] font-semibold tracking-tight">Visão anual</h1>
+          <p className="mt-0.5 text-[15px] text-muted">Os 12 meses lado a lado, com o saldo acumulado ao longo do ano.</p>
         </div>
         <div className="flex items-center border border-grid bg-white">
-          <button className="flex h-9 w-9 items-center justify-center text-muted hover:bg-head hover:text-ink" onClick={() => setYear(year - 1)} aria-label="Ano anterior">
-            <ChevronLeft size={17} />
+          <button className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink" onClick={() => setYear(year - 1)} aria-label="Ano anterior">
+            <ChevronLeft size={19} />
           </button>
-          <span className="min-w-[70px] border-x border-grid text-center text-[15px] font-semibold leading-9">{year}</span>
-          <button className="flex h-9 w-9 items-center justify-center text-muted hover:bg-head hover:text-ink" onClick={() => setYear(year + 1)} aria-label="Próximo ano">
-            <ChevronRight size={17} />
+          <span className="min-w-[70px] border-x border-grid text-center text-[17px] font-semibold leading-[44px]">{year}</span>
+          <button className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink" onClick={() => setYear(year + 1)} aria-label="Próximo ano">
+            <ChevronRight size={19} />
           </button>
         </div>
       </div>
 
       {error && (
-        <p role="alert" className="mb-4 border border-expense/30 bg-red-50 px-3 py-2 text-[13px] text-expense">
+        <p role="alert" className="mb-4 border border-expense/30 bg-red-50 px-3 py-2 text-[15px] text-expense">
           {error}
         </p>
       )}
@@ -88,8 +88,8 @@ export default function AnnualPage() {
               { l: "Sobra no ano", v: totBalance, c: totBalance < 0 ? "#c4361f" : "#107c41" },
             ].map((c) => (
               <div key={c.l} className="bg-white px-4 py-3">
-                <p className="text-[12.5px] font-medium text-muted">{c.l}</p>
-                <p className="mt-0.5 text-[23px] font-semibold leading-tight" style={{ color: c.c }}>
+                <p className="text-[14.5px] font-medium text-muted">{c.l}</p>
+                <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight" style={{ color: c.c }}>
                   {fmtBRL(c.v)}
                 </p>
               </div>
@@ -98,8 +98,8 @@ export default function AnnualPage() {
 
           <div className="border border-grid bg-white p-4 shadow-sheet">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-[13px] font-semibold">Mês a mês</h2>
-              <ul className="flex gap-4 text-[12px] text-muted">
+              <h2 className="text-[15px] font-semibold">Mês a mês</h2>
+              <ul className="flex gap-4 text-[14px] text-muted">
                 {[
                   ["Receitas", "#107c41"],
                   ["Despesas", "#c4361f"],
@@ -116,7 +116,7 @@ export default function AnnualPage() {
           </div>
 
           <div className="overflow-x-auto border border-grid bg-white shadow-sheet">
-            <table className="sheet" style={{ minWidth: 760 }}>
+            <table className="sheet" style={{ minWidth: 900 }}>
               <thead>
                 <tr>
                   <th className="gutter" style={{ width: 36 }} />
@@ -168,15 +168,16 @@ export default function AnnualPage() {
 
           {spendCats.length > 0 && (
             <div className="border border-grid bg-white p-4 shadow-sheet">
-              <h2 className="mb-3 text-[13px] font-semibold">Onde o dinheiro foi em {year}</h2>
+              <h2 className="mb-3 text-[15px] font-semibold">Onde o dinheiro foi em {year}</h2>
               <ul className="space-y-2.5">
                 {spendCats.map((c, i) => (
-                  <li key={c.name + c.kind} className="grid grid-cols-[150px_1fr_130px] items-center gap-3 text-[13px] sm:grid-cols-[200px_1fr_150px]">
+                  <li key={c.name + c.kind} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 text-[15px] sm:grid-cols-[240px_1fr_200px]">
                     <span className="truncate">
                       {c.name}
-                      {c.kind === "savings" && c.name.trim().toLowerCase() !== KIND_META.savings.label.toLowerCase() && <span className="ml-1.5 text-[11px] text-muted">({KIND_META.savings.label})</span>}
+                      {c.kind === "savings" && c.name.trim().toLowerCase() !== KIND_META.savings.label.toLowerCase() && <span className="ml-1.5 text-[13px] text-muted">({KIND_META.savings.label})</span>}
                     </span>
-                    <div className="h-[10px] bg-[#e3e7eb]">
+                    {/* no celular a barra vai para a linha de baixo */}
+                    <div className="col-span-2 row-start-2 h-[10px] bg-[#e3e7eb] sm:col-span-1 sm:row-start-auto">
                       <div
                         className="h-full"
                         style={{
@@ -185,9 +186,9 @@ export default function AnnualPage() {
                         }}
                       />
                     </div>
-                    <span className="text-right">
+                    <span className="whitespace-nowrap text-right">
                       <span className="font-semibold">{fmtBRL(c.total)}</span>
-                      <span className="ml-2 text-[12px] text-muted">{fmtPct(c.total / spendTotal)}</span>
+                      <span className="ml-2 text-[14px] text-muted">{fmtPct(c.total / spendTotal)}</span>
                     </span>
                   </li>
                 ))}
@@ -201,9 +202,9 @@ export default function AnnualPage() {
 }
 
 function BarChart({ rows }: { rows: { ym: string; income: number; expense: number; savings: number }[] }) {
-  const W = 760;
-  const H = 240;
-  const padL = 52;
+  const W = 1200;
+  const H = 280;
+  const padL = 70;
   const padR = 8;
   const padT = 10;
   const padB = 26;
@@ -216,11 +217,11 @@ function BarChart({ rows }: { rows: { ym: string; income: number; expense: numbe
 
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="min-w-[560px]" role="img" aria-label="Receitas, despesas e cofrinho por mês">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[900px]" role="img" aria-label="Receitas, despesas e cofrinho por mês">
         {ticks.map((t) => (
           <g key={t}>
             <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke="#e3e7eb" />
-            <text x={padL - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill="#5f6b76">
+            <text x={padL - 6} y={y(t) + 4} textAnchor="end" fontSize="13" fill="#5f6b76">
               {compact.format(t / 100)}
             </text>
           </g>
@@ -239,7 +240,7 @@ function BarChart({ rows }: { rows: { ym: string; income: number; expense: numbe
                   <title>{`${MONTHS_SHORT[i]}: ${b.l} ${fmtBRL(b.v)}`}</title>
                 </rect>
               ))}
-              <text x={cx} y={H - 8} textAnchor="middle" fontSize="11.5" fill="#5f6b76">
+              <text x={cx} y={H - 8} textAnchor="middle" fontSize="13.5" fill="#5f6b76">
                 {MONTHS_SHORT[i]}
               </text>
             </g>

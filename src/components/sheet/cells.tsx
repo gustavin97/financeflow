@@ -215,16 +215,16 @@ export function StatusCell({
       type="button"
       onClick={onToggle}
       aria-pressed={done}
-      className="flex h-[31px] w-full items-center gap-2 px-2 text-left text-[12.5px] hover:bg-head"
+      className="flex h-[37px] w-full items-center gap-2 px-2 text-left text-[14.5px] hover:bg-head"
     >
       <span
-        className="flex h-[15px] w-[15px] shrink-0 items-center justify-center border"
+        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center border"
         style={{
           borderColor: done ? color : "#9aa3ab",
           background: done ? color : "#fff",
         }}
       >
-        {done && <Check size={11} strokeWidth={3} className="text-white" />}
+        {done && <Check size={13} strokeWidth={3} className="text-white" />}
       </span>
       <span className={done ? "font-medium" : "text-muted"} style={done ? { color } : undefined}>
         {done ? doneLabel : pendingLabel}

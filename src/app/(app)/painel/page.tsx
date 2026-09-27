@@ -95,27 +95,27 @@ export default function DashboardPage() {
   const groupLabel = options.find((o) => o.value === group)?.label ?? "Tabela";
 
   return (
-    <div className="mx-auto max-w-[1400px] px-3 pb-12 pt-4 sm:px-5">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-14 pt-5">
       {/* ---------- filtros: uma linha acima dos gráficos ---------- */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="mr-2 text-[22px] font-semibold tracking-tight">Painel</h1>
+        <h1 className="mr-2 text-[26px] font-semibold tracking-tight">Painel</h1>
         <div className="flex items-center border border-grid bg-white">
           <button
-            className="flex h-9 w-9 items-center justify-center text-muted hover:bg-head hover:text-ink"
+            className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink"
             onClick={() => setYm(addMonths(ym, -1))}
             aria-label="Mês anterior"
           >
-            <ChevronLeft size={17} />
+            <ChevronLeft size={19} />
           </button>
-          <span className="min-w-[150px] border-x border-grid px-3 text-center text-[15px] font-semibold leading-9">
+          <span className="min-w-[190px] border-x border-grid px-3 text-center text-[17px] font-semibold leading-[44px]">
             {cap(ymLabel(ym))}
           </span>
           <button
-            className="flex h-9 w-9 items-center justify-center text-muted hover:bg-head hover:text-ink"
+            className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink"
             onClick={() => setYm(addMonths(ym, 1))}
             aria-label="Próximo mês"
           >
-            <ChevronRight size={17} />
+            <ChevronRight size={19} />
           </button>
         </div>
         {members.length > 0 && (
@@ -130,7 +130,7 @@ export default function DashboardPage() {
                 role="tab"
                 aria-selected={scope === t.id}
                 onClick={() => setWho(t.id)}
-                className={`flex h-9 items-center gap-1.5 border px-3 text-[13px] font-medium ${
+                className={`flex h-11 items-center gap-1.5 border px-3 text-[15px] font-medium ${
                   scope === t.id ? "border-brand bg-brand-soft text-brand" : "border-grid bg-white text-muted hover:bg-head"
                 }`}
               >
@@ -140,9 +140,9 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-        <label className="ml-auto flex items-center gap-2 text-[13px] text-muted">
+        <label className="ml-auto flex items-center gap-2 text-[15px] text-muted">
           Agrupar gastos por
-          <select className="field h-9 w-auto min-w-[160px]" value={group} onChange={(e) => setGroupBy(e.target.value)}>
+          <select className="field h-11 w-auto min-w-[160px]" value={group} onChange={(e) => setGroupBy(e.target.value)}>
             {options.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -153,7 +153,7 @@ export default function DashboardPage() {
       </div>
 
       {error && (
-        <p role="alert" className="mb-4 border border-expense/30 bg-red-50 px-3 py-2 text-[13px] text-expense">
+        <p role="alert" className="mb-4 border border-expense/30 bg-red-50 px-3 py-2 text-[15px] text-expense">
           {error}
         </p>
       )}
@@ -161,8 +161,8 @@ export default function DashboardPage() {
 
       {data && !cur && (
         <div className="border border-grid bg-white px-5 py-8 text-center shadow-sheet">
-          <p className="text-[14px] font-semibold">{cap(ymLabel(ym))} ainda não foi iniciado.</p>
-          <p className="mt-1 text-[13px] text-muted">Abra a planilha do mês para lançar receitas e despesas.</p>
+          <p className="text-[16px] font-semibold">{cap(ymLabel(ym))} ainda não foi iniciado.</p>
+          <p className="mt-1 text-[15px] text-muted">Abra a planilha do mês para lançar receitas e despesas.</p>
           <Link href={`/planilha/${ym}`} className="btn btn-primary mt-4">
             Abrir planilha
           </Link>
@@ -236,11 +236,11 @@ function Card({
     <section className="min-w-0 border border-grid bg-white p-4 shadow-sheet">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-[14px] font-semibold">{title}</h2>
-          {subtitle && <p className="text-[12.5px] text-muted">{subtitle}</p>}
+          <h2 className="text-[16px] font-semibold">{title}</h2>
+          {subtitle && <p className="text-[14.5px] text-muted">{subtitle}</p>}
         </div>
         {legend && (
-          <ul className="flex flex-wrap gap-3 text-[12px] text-muted">
+          <ul className="flex flex-wrap gap-3 text-[14px] text-muted">
             {legend.map((l) => (
               <li key={l.label} className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5" style={{ background: l.color }} />
@@ -255,7 +255,7 @@ function Card({
   );
 }
 
-const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-[13px] text-muted">{text}</p>;
+const Empty = ({ text }: { text: string }) => <p className="py-6 text-center text-[15px] text-muted">{text}</p>;
 
 /** Variação em relação ao mês anterior. `goodWhenUp` define a cor. */
 function Delta({ now, before, goodWhenUp }: { now: number; before: number | null; goodWhenUp: boolean }) {
@@ -265,7 +265,7 @@ function Delta({ now, before, goodWhenUp }: { now: number; before: number | null
   if (Math.abs(d) < 0.005)
     return (
       <span className="inline-flex items-center gap-0.5 text-muted">
-        <Minus size={12} /> igual
+        <Minus size={14} /> igual
       </span>
     );
   const up = now > before;
@@ -273,7 +273,7 @@ function Delta({ now, before, goodWhenUp }: { now: number; before: number | null
   const Icon = up ? ArrowUpRight : ArrowDownRight;
   return (
     <span className="inline-flex items-center gap-0.5 font-semibold" style={{ color: good ? "#107c41" : "#c4361f" }}>
-      <Icon size={13} aria-hidden />
+      <Icon size={15} aria-hidden />
       {up ? "+" : "−"}
       {fmtPct(Math.abs(d), Math.abs(d) < 0.1 ? 1 : 0)}
     </span>
@@ -297,11 +297,11 @@ function Kpis({ point, prev, prevYm }: { point: MonthPoint; prev: MonthPoint | n
     <div className="grid grid-cols-2 gap-px border border-grid bg-grid shadow-sheet lg:grid-cols-4">
       {tiles.map((t) => (
         <div key={t.label} className="bg-white px-4 py-3">
-          <p className="text-[12.5px] font-medium text-muted">{t.label}</p>
-          <p className="mt-0.5 text-[23px] font-semibold leading-tight tracking-tight" style={{ color: t.color }}>
+          <p className="text-[14.5px] font-medium text-muted">{t.label}</p>
+          <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight tracking-tight" style={{ color: t.color }}>
             {fmtBRL(t.v)}
           </p>
-          <p className="mt-1 text-[12px] text-muted">
+          <p className="mt-1 text-[14px] text-muted">
             <Delta now={t.v} before={t.p} goodWhenUp={t.goodUp} /> <span className="text-faint">vs {ymShort(prevYm)}</span>
           </p>
         </div>
@@ -321,14 +321,14 @@ function Ranking({ rows }: { rows: CompareRow[] }) {
       {list.map((r) => (
         <li
           key={r.key}
-          className="text-[13px]"
+          className="text-[15px]"
           title={`${r.label}: ${fmtBRL(r.current)} (${fmtPct(r.current / total, 1)} das despesas)`}
         >
           <div className="mb-1 flex items-baseline justify-between gap-3">
             <span className="truncate">{r.label}</span>
             <span className="whitespace-nowrap tabular-nums">
               <span className="font-semibold">{fmtBRL(r.current)}</span>
-              <span className="ml-2 inline-block w-[36px] text-right text-[12px] text-muted">{fmtPct(r.current / total)}</span>
+              <span className="ml-2 inline-block w-[36px] text-right text-[14px] text-muted">{fmtPct(r.current / total)}</span>
             </span>
           </div>
           <div className="h-[10px]">
@@ -339,7 +339,7 @@ function Ranking({ rows }: { rows: CompareRow[] }) {
           </div>
         </li>
       ))}
-      <li className="flex justify-between border-t border-grid pt-2 text-[13px] font-semibold">
+      <li className="flex justify-between border-t border-grid pt-2 text-[15px] font-semibold">
         <span>Total</span>
         <span className="tabular-nums">
           {fmtBRL(total)}
@@ -359,12 +359,12 @@ function Compare({ rows }: { rows: CompareRow[] }) {
       {rows.map((r) => (
         <li
           key={r.key}
-          className="text-[13px]"
+          className="text-[15px]"
           title={`${r.label}: ${fmtBRL(r.current)} agora, ${fmtBRL(r.previous)} antes`}
         >
           <div className="mb-1 flex items-baseline justify-between gap-3">
             <span className="truncate">{r.label}</span>
-            <span className="whitespace-nowrap text-[12px] tabular-nums">
+            <span className="whitespace-nowrap text-[14px] tabular-nums">
               <span className="font-semibold text-ink">{fmtBRL(r.current)}</span>
               <span className="ml-1.5 text-muted">antes {fmtBRL(r.previous)}</span>
               <span className="ml-2">
@@ -412,9 +412,9 @@ function Evolution({
   ];
   if (!groups.length) return <Empty text="Sem meses lançados ainda." />;
 
-  const W = 640;
-  const H = 240;
-  const padL = 48;
+  const W = 900;
+  const H = 280;
+  const padL = 66;
   const padR = 8;
   const padT = 10;
   const padB = 26;
@@ -428,7 +428,7 @@ function Evolution({
 
   return (
     <div className="relative overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[520px]" role="img" aria-label="Receitas, despesas e economias por mês">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[760px]" role="img" aria-label="Receitas, despesas e economias por mês">
         <defs>
           <pattern id="proj" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)">
             <rect width="5" height="5" fill="white" />
@@ -438,7 +438,7 @@ function Evolution({
         {ticks.map((t) => (
           <g key={t}>
             <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={C.grid} />
-            <text x={padL - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill={C.text}>
+            <text x={padL - 6} y={y(t) + 4} textAnchor="end" fontSize="13" fill={C.text}>
               {compact.format(t / 100)}
             </text>
           </g>
@@ -468,7 +468,7 @@ function Evolution({
                   </g>
                 );
               })}
-              <text x={cx} y={H - 8} textAnchor="middle" fontSize="11.5" fill={g.projected ? C.text : C.text} fontStyle={g.projected ? "italic" : undefined}>
+              <text x={cx} y={H - 8} textAnchor="middle" fontSize="13.5" fill={g.projected ? C.text : C.text} fontStyle={g.projected ? "italic" : undefined}>
                 {ymShort(g.ym)}
                 {g.projected ? "*" : ""}
               </text>
@@ -488,7 +488,7 @@ function Evolution({
       </svg>
       {h && hover !== null && (
         <div
-          className="pointer-events-none absolute top-2 z-10 min-w-[170px] border border-grid bg-white px-3 py-2 text-[12px] shadow-pop"
+          className="pointer-events-none absolute top-2 z-10 min-w-[170px] border border-grid bg-white px-3 py-2 text-[14px] shadow-pop"
           style={{
             left: `${((padL + groupW * hover + groupW / 2) / W) * 100}%`,
             transform: hover > groups.length / 2 ? "translateX(-105%)" : "translateX(5%)",
@@ -547,7 +547,7 @@ function ProjectionPanel({
     ["Despesa prevista", -p.expense],
   ];
   return (
-    <div className="space-y-3 text-[13px]">
+    <div className="space-y-3 text-[15px]">
       <div className="border border-grid">
         {lines.map(([l, v]) => (
           <div key={l} className="flex justify-between border-b border-grid px-3 py-1.5">
@@ -598,7 +598,7 @@ function ProjectionPanel({
         </p>
       )}
 
-      <p className="text-[12px] text-faint">
+      <p className="text-[14px] text-faint">
         * Média ponderada de {p.basedOn.map(ymShort).join(", ")} (o mês mais recente pesa mais).
       </p>
     </div>

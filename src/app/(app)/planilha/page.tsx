@@ -10,5 +10,5 @@ export default function PlanilhaIndex() {
   useEffect(() => {
     router.replace(`/planilha/${currentYm()}`);
   }, [router]);
-  return <p className="p-6 text-[13px] text-muted">Abrindo o mês atual...</p>;
+  return <p className="p-6 text-[15px] text-muted">Abrindo o mês atual...</p>;
 }

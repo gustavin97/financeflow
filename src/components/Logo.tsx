@@ -8,11 +8,13 @@ export function LogoMark({ size = 24 }: { size?: number }) {
   );
 }
 
-export function Logo({ light = false }: { light?: boolean }) {
+export function Logo({ light = false, large = false }: { light?: boolean; large?: boolean }) {
   return (
-    <span className="inline-flex items-center gap-2.5">
-      <LogoMark />
-      <span className={`text-[16px] font-semibold tracking-tight ${light ? "text-white" : "text-ink"}`}>
+    <span className={`inline-flex items-center ${large ? "gap-3" : "gap-2.5"}`}>
+      <LogoMark size={large ? 30 : 24} />
+      <span
+        className={`${large ? "text-[20px]" : "text-[16px]"} whitespace-nowrap font-semibold tracking-tight ${light ? "text-white" : "text-ink"}`}
+      >
         Finance Flow
       </span>
     </span>

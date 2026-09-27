@@ -72,7 +72,7 @@ export function MembersEditor({
                 ))}
               </div>
               <input
-                className="field h-8 flex-1"
+                className="field h-10 flex-1"
                 defaultValue={m.name}
                 maxLength={40}
                 aria-label="Nome da pessoa"
@@ -84,11 +84,11 @@ export function MembersEditor({
               />
               <button
                 type="button"
-                className="btn btn-ghost btn-sm h-8 w-8 px-0 text-expense"
+                className="btn btn-ghost btn-sm h-10 w-10 px-0 text-expense"
                 aria-label={`Remover ${m.name}`}
                 onClick={() => remove(m)}
               >
-                <Trash2 size={14} />
+                <Trash2 size={16} />
               </button>
             </li>
           ))}
@@ -102,11 +102,11 @@ export function MembersEditor({
           maxLength={40}
           onChange={(e) => setName(e.target.value)}
         />
-        <button className="btn h-9" disabled={busy}>
-          <Plus size={14} /> Adicionar
+        <button className="btn h-11" disabled={busy}>
+          <Plus size={16} /> Adicionar
         </button>
       </form>
-      {error && <p className="text-[13px] text-expense">{error}</p>}
+      {error && <p className="text-[15px] text-expense">{error}</p>}
     </div>
   );
 }
@@ -122,7 +122,7 @@ export function MembersDialog({
 }) {
   return (
     <Modal title="Pessoas da casa" onClose={onClose}>
-      <p className="mb-3 text-[13px] text-muted">
+      <p className="mb-3 text-[15px] text-muted">
         Cadastre quem divide as contas (ex.: marido e esposa). Cada tabela pode ser de uma pessoa ou do
         conjunto, e o sistema calcula receitas, despesas e saldo de cada um.
       </p>
@@ -139,7 +139,7 @@ export function MembersDialog({
 /** Etiqueta com a cor e o nome do dono da tabela. */
 export function MemberTag({ member }: { member: Member | null }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-medium text-muted">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[14px] font-medium text-muted">
       <span className="h-2 w-2" style={{ background: member?.color ?? "#6b7280" }} />
       {member?.name ?? "Conjunto"}
     </span>

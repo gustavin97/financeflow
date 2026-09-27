@@ -67,39 +67,39 @@ function MonthView({ ym }: { ym: string }) {
 
   return (
     <>
-      <div className="mx-auto max-w-[1600px] px-3 pb-16 pt-4 sm:px-5">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-20 pt-5">
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <div className="flex items-center border border-grid bg-white">
             <Link
               href={`/planilha/${addMonths(ym, -1)}`}
-              className="flex h-9 w-9 items-center justify-center text-muted hover:bg-head hover:text-ink"
+              className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink"
               aria-label="Mês anterior"
             >
-              <ChevronLeft size={17} />
+              <ChevronLeft size={19} />
             </Link>
-            <h1 className="min-w-[150px] border-x border-grid px-3 text-center text-[16px] font-semibold leading-9">
+            <h1 className="min-w-[190px] border-x border-grid px-3 text-center text-[18px] font-semibold leading-[44px]">
               {title}
             </h1>
             <Link
               href={`/planilha/${addMonths(ym, 1)}`}
-              className="flex h-9 w-9 items-center justify-center text-muted hover:bg-head hover:text-ink"
+              className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink"
               aria-label="Próximo mês"
             >
-              <ChevronRight size={17} />
+              <ChevronRight size={19} />
             </Link>
           </div>
           {!isNow && (
-            <Link href={`/planilha/${currentYm()}`} className="btn h-9">
+            <Link href={`/planilha/${currentYm()}`} className="btn h-11">
               Ir para o mês atual
             </Link>
           )}
           {data?.initialized && (
             <div className="ml-auto flex gap-2">
-              <button className="btn h-9" onClick={() => setShowMembers(true)}>
-                <Users size={15} /> Pessoas{members.length ? ` (${members.length})` : ""}
+              <button className="btn h-11" onClick={() => setShowMembers(true)}>
+                <Users size={17} /> Pessoas{members.length ? ` (${members.length})` : ""}
               </button>
-              <button className="btn btn-primary h-9" onClick={() => setShowNew(true)}>
-                <Plus size={15} /> Nova tabela
+              <button className="btn btn-primary h-11" onClick={() => setShowNew(true)}>
+                <Plus size={17} /> Nova tabela
               </button>
             </div>
           )}
@@ -108,11 +108,11 @@ function MonthView({ ym }: { ym: string }) {
         {m.error && (
           <div
             role="alert"
-            className="mb-4 flex items-start justify-between gap-3 border border-expense/30 bg-red-50 px-3 py-2 text-[13px] text-expense"
+            className="mb-4 flex items-start justify-between gap-3 border border-expense/30 bg-red-50 px-3 py-2 text-[15px] text-expense"
           >
             <span>{m.error}</span>
             <button onClick={m.clearError} aria-label="Fechar aviso">
-              <X size={15} />
+              <X size={17} />
             </button>
           </div>
         )}
@@ -130,10 +130,10 @@ function MonthView({ ym }: { ym: string }) {
             {members.length > 0 ? (
               <PeopleTable members={members} calc={calc} />
             ) : (
-              <div className="flex flex-wrap items-center justify-between gap-2 border border-dashed border-[#aab3bb] bg-white/60 px-4 py-2.5 text-[13px] text-muted">
+              <div className="flex flex-wrap items-center justify-between gap-2 border border-dashed border-[#aab3bb] bg-white/60 px-4 py-2.5 text-[15px] text-muted">
                 <span>Planilha do casal? Cadastre as pessoas para ter tabelas de cada um e o saldo de cada pessoa.</span>
                 <button className="btn btn-sm" onClick={() => setShowMembers(true)}>
-                  <Users size={13} /> Cadastrar pessoas
+                  <Users size={15} /> Cadastrar pessoas
                 </button>
               </div>
             )}
@@ -151,7 +151,7 @@ function MonthView({ ym }: { ym: string }) {
                     role="tab"
                     aria-selected={filter === t.id}
                     onClick={() => setWho(t.id)}
-                    className={`flex h-8 items-center gap-1.5 border px-3 text-[13px] font-medium ${
+                    className={`flex h-10 items-center gap-1.5 border px-3 text-[15px] font-medium ${
                       filter === t.id ? "border-brand bg-brand-soft text-brand" : "border-grid bg-white text-muted hover:bg-head"
                     }`}
                   >
@@ -164,7 +164,7 @@ function MonthView({ ym }: { ym: string }) {
 
             <div
               className="grid items-start gap-4"
-              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 720px), 1fr))" }}
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 820px), 1fr))" }}
             >
               {visible.map((b) =>
                 b.kind === "total" ? (
@@ -185,7 +185,7 @@ function MonthView({ ym }: { ym: string }) {
               )}
               <button
                 onClick={() => setShowNew(true)}
-                className="flex min-h-[120px] flex-col items-center justify-center gap-1 border border-dashed border-[#aab3bb] bg-white/60 text-[13px] font-medium text-muted transition-colors hover:border-brand hover:bg-brand-soft hover:text-brand"
+                className="flex min-h-[120px] flex-col items-center justify-center gap-1 border border-dashed border-[#aab3bb] bg-white/60 text-[15px] font-medium text-muted transition-colors hover:border-brand hover:bg-brand-soft hover:text-brand"
               >
                 <Plus size={20} />
                 Nova tabela

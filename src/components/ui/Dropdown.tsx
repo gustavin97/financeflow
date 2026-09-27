@@ -7,7 +7,7 @@ export function Dropdown({
   label,
   children,
   align = "right",
-  triggerClassName = "btn btn-ghost h-9 w-9 px-0",
+  triggerClassName = "btn btn-ghost h-11 w-11 px-0",
 }: {
   trigger: React.ReactNode;
   label: string;
@@ -70,7 +70,7 @@ export function MenuItem({
   danger?: boolean;
   href?: string;
 }) {
-  const cls = `flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-head ${
+  const cls = `flex w-full items-center gap-2 px-3 py-2 text-left text-[15px] hover:bg-head ${
     danger ? "text-expense" : "text-ink"
   }`;
   if (href)

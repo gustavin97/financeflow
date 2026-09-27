@@ -78,8 +78,8 @@ export function BudgetDialog({
                 }}
               />
               <span>
-                <span className="block text-[13px] font-semibold">{o.label}</span>
-                <span className="block text-xs text-muted">{o.hint}</span>
+                <span className="block text-[15px] font-semibold">{o.label}</span>
+                <span className="block text-[14px] text-muted">{o.hint}</span>
               </span>
             </label>
           ))}
@@ -100,7 +100,7 @@ export function BudgetDialog({
             />
           </div>
         )}
-        {error && <p className="text-[13px] text-expense">{error}</p>}
+        {error && <p className="text-[15px] text-expense">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn" onClick={onClose}>
             Cancelar
@@ -147,7 +147,7 @@ export function ColumnsDialog({
   return (
     <Modal title={`Colunas de “${block.name}”`} onClose={onClose}>
       <div className="space-y-4">
-        <p className="text-[13px] text-muted">
+        <p className="text-[15px] text-muted">
           Além de descrição, valor, data e status, você pode criar colunas próprias, como loja,
           parcela ou categoria. Colunas numéricas ganham soma no rodapé.
         </p>
@@ -157,7 +157,7 @@ export function ColumnsDialog({
             {cols.map((c) => (
               <li key={c.id} className="flex items-center gap-2 px-2 py-1.5">
                 <input
-                  className="field h-8 flex-1"
+                  className="field h-10 flex-1"
                   value={c.name}
                   maxLength={40}
                   aria-label="Nome da coluna"
@@ -165,14 +165,14 @@ export function ColumnsDialog({
                     setCols(cols.map((x) => (x.id === c.id ? { ...x, name: e.target.value } : x)))
                   }
                 />
-                <span className="w-[92px] shrink-0 text-xs text-muted">{TYPE_LABEL[c.type]}</span>
+                <span className="w-[92px] shrink-0 text-[14px] text-muted">{TYPE_LABEL[c.type]}</span>
                 <button
                   type="button"
-                  className="btn btn-ghost btn-sm h-8 w-8 px-0 text-expense"
+                  className="btn btn-ghost btn-sm h-10 w-10 px-0 text-expense"
                   aria-label={`Excluir coluna ${c.name}`}
                   onClick={() => setCols(cols.filter((x) => x.id !== c.id))}
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
               </li>
             ))}
@@ -207,13 +207,13 @@ export function ColumnsDialog({
                 </option>
               ))}
             </select>
-            <button type="button" className="btn h-9" onClick={add}>
-              <Plus size={14} /> Adicionar
+            <button type="button" className="btn h-11" onClick={add}>
+              <Plus size={16} /> Adicionar
             </button>
           </div>
         </div>
 
-        {error && <p className="text-[13px] text-expense">{error}</p>}
+        {error && <p className="text-[15px] text-expense">{error}</p>}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn" onClick={onClose}>
             Cancelar

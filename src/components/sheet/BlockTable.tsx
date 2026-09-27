@@ -87,7 +87,7 @@ export function BlockTable({
   };
 
   const minWidth =
-    36 + 150 + 108 + (running ? 108 : 0) + 128 + (isSavings ? 140 : 0) + 108 + extras.length * 132 + 34;
+    42 + 180 + 128 + (running ? 128 : 0) + 152 + (isSavings ? 166 : 0) + 128 + extras.length * 156 + 40;
 
   // o limite em % é calculado sobre o dinheiro de onde a tabela sai
   const base = running ? calc.resolve(running.source) : income;
@@ -101,7 +101,7 @@ export function BlockTable({
       aria-label={`Tabela ${block.name}`}
     >
       {/* ---------- título ---------- */}
-      <div className="flex h-10 items-center border-b border-grid">
+      <div className="flex h-12 items-center border-b border-grid">
         <div className="min-w-0 flex-1">
           <TextCell
             bold
@@ -120,19 +120,19 @@ export function BlockTable({
           </button>
         )}
         <span
-          className="hidden items-center gap-1.5 px-2 text-[12px] font-medium sm:flex"
+          className="hidden items-center gap-1.5 px-2 text-[14px] font-medium sm:flex"
           style={{ color: meta.color }}
         >
           <span className="h-2 w-2" style={{ background: meta.color }} />
           {meta.label}
         </span>
         {block.kind !== "income" && income > 0 && (
-          <span className="hidden whitespace-nowrap pr-1 text-[12px] text-muted md:inline">
+          <span className="hidden whitespace-nowrap pr-1 text-[14px] text-muted md:inline">
             {fmtPct(total / income, 1)} da renda
           </span>
         )}
-        <span className="whitespace-nowrap px-2 text-[14px] font-semibold">{fmtBRL(total)}</span>
-        <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={16} />}>
+        <span className="whitespace-nowrap px-2 text-[16px] font-semibold">{fmtBRL(total)}</span>
+        <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={18} />}>
           {block.kind !== "income" && (
             <MenuItem onClick={() => setDialog("budget")}>
               {isSavings ? "Definir meta do mês" : "Definir limite do mês"}
@@ -169,17 +169,17 @@ export function BlockTable({
       <div className="overflow-x-auto">
         <table ref={tableRef} className="sheet" style={{ minWidth }}>
           <colgroup>
-            <col style={{ width: 36 }} />
+            <col style={{ width: 42 }} />
             <col />
-            <col style={{ width: 108 }} />
-            {running && <col style={{ width: 108 }} />}
             <col style={{ width: 128 }} />
-            {isSavings && <col style={{ width: 140 }} />}
-            <col style={{ width: 108 }} />
+            {running && <col style={{ width: 128 }} />}
+            <col style={{ width: 152 }} />
+            {isSavings && <col style={{ width: 166 }} />}
+            <col style={{ width: 128 }} />
             {extras.map((c) => (
-              <col key={c.id} style={{ width: 132 }} />
+              <col key={c.id} style={{ width: 156 }} />
             ))}
-            <col style={{ width: 34 }} />
+            <col style={{ width: 40 }} />
           </colgroup>
           <thead>
             <tr>
@@ -206,7 +206,7 @@ export function BlockTable({
                   aria-label="Adicionar coluna"
                   onClick={() => setDialog("columns")}
                 >
-                  <Plus size={14} />
+                  <Plus size={16} />
                 </button>
               </th>
             </tr>
@@ -229,7 +229,7 @@ export function BlockTable({
             {block.entries.length === 0 && (
               <tr>
                 <td className="gutter" />
-                <td colSpan={cols} className="!px-2 text-[13px] text-faint">
+                <td colSpan={cols} className="!px-2 text-[15px] text-faint">
                   Nenhum lançamento ainda. Clique em “Nova linha” para começar.
                 </td>
                 <td />
@@ -240,9 +240,9 @@ export function BlockTable({
               <td colSpan={cols} className="!p-0">
                 <button
                   onClick={addRow}
-                  className="flex h-[31px] w-full items-center gap-1.5 px-2 text-[13px] font-medium text-brand hover:bg-brand-soft"
+                  className="flex h-[37px] w-full items-center gap-1.5 px-2 text-[15px] font-medium text-brand hover:bg-brand-soft"
                 >
-                  <Plus size={14} /> Nova linha
+                  <Plus size={16} /> Nova linha
                 </button>
               </td>
               <td />
@@ -260,7 +260,7 @@ export function BlockTable({
               )}
               <td />
               {isSavings && <td />}
-              <td className="whitespace-nowrap text-[12px] font-medium text-muted">
+              <td className="whitespace-nowrap text-[14px] font-medium text-muted">
                 {count > 0 ? `${doneCount} de ${count} ${DONE_PLURAL[block.kind]}` : ""}
               </td>
               {extras.map((c) => (
@@ -341,12 +341,12 @@ function EntryRow({
       <td className="gutter">
         <span className="group-hover:hidden">{i + 1}</span>
         <button
-          className="hidden h-[31px] w-full items-center justify-center text-faint hover:bg-red-50 hover:text-expense group-hover:flex focus-visible:flex"
+          className="hidden h-[37px] w-full items-center justify-center text-faint hover:bg-red-50 hover:text-expense group-hover:flex focus-visible:flex"
           aria-label={`Excluir linha ${i + 1}`}
           title="Excluir linha"
           onClick={() => actions.removeEntry(block.id, e.id)}
         >
-          <X size={13} />
+          <X size={15} />
         </button>
       </td>
       <td>
@@ -370,7 +370,7 @@ function EntryRow({
       </td>
       {runningAfter !== null && (
         <td
-          className="bg-[#fafbfb] !px-2 text-right text-[12.5px]"
+          className="bg-[#fafbfb] !px-2 text-right text-[14.5px]"
           style={{ color: runningAfter < 0 ? "#c4361f" : "#5f6b76", fontWeight: runningAfter < 0 ? 600 : undefined }}
         >
           {fmtNum(runningAfter)}
@@ -499,7 +499,7 @@ function SourceBar({ running, label, onEdit }: { running: Running; label: string
   const neg = running.end < 0;
   const after = running.sharedWith;
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-grid bg-[#fafbfb] px-3 py-1.5 text-[12px]">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-grid bg-[#fafbfb] px-3 py-1.5 text-[14px]">
       <span className="text-muted">
         Sai de{" "}
         <button className="font-semibold text-ink hover:underline" onClick={onEdit} title="Mudar origem do dinheiro">
@@ -537,7 +537,7 @@ function BudgetBar({
 
   if (limit === null || (block.budgetType === "percent" && income <= 0)) {
     return (
-      <div className="border-t border-grid bg-[#fafbfb] px-3 py-2 text-[12px] text-muted">
+      <div className="border-t border-grid bg-[#fafbfb] px-3 py-2 text-[14px] text-muted">
         {what}: {fmtPct(block.budgetValue / 100, 0)} da renda. Adicione receitas para calcular.
       </div>
     );
@@ -560,7 +560,7 @@ function BudgetBar({
 
   return (
     <div className="border-t border-grid bg-[#fafbfb] px-3 py-2">
-      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 text-[12px]">
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 text-[14px]">
         <span className="text-muted">
           {what}: <span className="font-semibold text-ink">{fmtBRL(limit)}</span> ({origin})
         </span>

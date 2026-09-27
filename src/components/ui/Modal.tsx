@@ -7,7 +7,7 @@ export function Modal({
   title,
   onClose,
   children,
-  width = "max-w-md",
+  width = "max-w-lg",
 }: {
   title: string;
   onClose: () => void;
@@ -35,9 +35,9 @@ export function Modal({
     >
       <div className={`w-full ${width} border border-grid bg-white shadow-pop`}>
         <div className="flex h-11 items-center justify-between border-b border-grid bg-head pl-4 pr-1">
-          <h2 className="text-[14px] font-semibold">{title}</h2>
-          <button className="btn btn-ghost h-9 w-9 px-0" onClick={onClose} aria-label="Fechar">
-            <X size={16} />
+          <h2 className="text-[16px] font-semibold">{title}</h2>
+          <button className="btn btn-ghost h-11 w-11 px-0" onClick={onClose} aria-label="Fechar">
+            <X size={18} />
           </button>
         </div>
         <div className="p-4">{children}</div>

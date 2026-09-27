@@ -11,23 +11,23 @@ export function MonthTabs({ ym }: { ym: string }) {
   return (
     <nav
       aria-label="Meses"
-      className="fixed inset-x-0 bottom-0 z-30 flex h-9 items-stretch border-t border-grid bg-head"
+      className="fixed inset-x-0 bottom-0 z-30 flex h-11 items-stretch border-t border-grid bg-head"
     >
       <div className="flex shrink-0 items-center border-r border-grid bg-white">
         <Link
           href={`/planilha/${year - 1}-${pad(month)}`}
-          className="flex h-full w-8 items-center justify-center text-muted hover:bg-head hover:text-ink"
+          className="flex h-full w-10 items-center justify-center text-muted hover:bg-head hover:text-ink"
           aria-label={`Ano ${year - 1}`}
         >
-          <ChevronLeft size={15} />
+          <ChevronLeft size={17} />
         </Link>
-        <span className="px-1 text-[13px] font-semibold">{year}</span>
+        <span className="px-1 text-[15px] font-semibold">{year}</span>
         <Link
           href={`/planilha/${year + 1}-${pad(month)}`}
-          className="flex h-full w-8 items-center justify-center text-muted hover:bg-head hover:text-ink"
+          className="flex h-full w-10 items-center justify-center text-muted hover:bg-head hover:text-ink"
           aria-label={`Ano ${year + 1}`}
         >
-          <ChevronRight size={15} />
+          <ChevronRight size={17} />
         </Link>
       </div>
       <div className="flex min-w-0 flex-1 items-stretch overflow-x-auto">
@@ -40,7 +40,7 @@ export function MonthTabs({ ym }: { ym: string }) {
               key={target}
               href={`/planilha/${target}`}
               aria-current={active ? "page" : undefined}
-              className={`relative flex min-w-[52px] items-center justify-center border-r border-grid px-3 text-[13px] transition-colors ${
+              className={`relative flex min-w-[52px] items-center justify-center border-r border-grid px-3 text-[15px] transition-colors ${
                 active
                   ? "bg-white font-semibold text-brand"
                   : "text-muted hover:bg-white hover:text-ink"
