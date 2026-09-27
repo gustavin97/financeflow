@@ -1,0 +1,583 @@
+"use client";
+
+import { MoreHorizontal, Plus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { KIND_META } from "@/lib/kinds";
+import { fmtBRL, fmtNum, fmtPct, fmtPlain } from "@/lib/money";
+import { monthRange, todayIso } from "@/lib/dates";
+import { refLabel, type MonthCalc, type Running } from "@/lib/calc";
+import { blockTotals, budgetLimit } from "@/lib/summary";
+import type { Block, Entry, ExtraColumn, GoalLite, Member } from "@/lib/types";
+import { MemberTag } from "../MembersEditor";
+import { Dropdown, MenuItem } from "../ui/Dropdown";
+import { BlockSettingsDialog } from "./blockDialogs";
+import { DateCell, GoalCell, MoneyCell, StatusCell, TextCell, type Nav } from "./cells";
+import { BudgetDialog, ColumnsDialog } from "./dialogs";
+import type { useMonth } from "./useMonth";
+
+type Actions = Pick<
+  ReturnType<typeof useMonth>,
+  "patchBlock" | "removeBlock" | "completeBlock" | "addEntry" | "patchEntry" | "removeEntry"
+>;
+
+const DONE_PLURAL = { income: "recebidos", expense: "pagos", savings: "guardados", total: "" } as const;
+
+export function BlockTable({
+  block,
+  blocks,
+  goals,
+  members,
+  calc,
+  income,
+  ym,
+  actions,
+}: {
+  block: Block;
+  blocks: Block[];
+  goals: GoalLite[];
+  members: Member[];
+  calc: MonthCalc;
+  income: number;
+  ym: string;
+  actions: Actions;
+}) {
+  const meta = KIND_META[block.kind];
+  const { total, done, count, doneCount } = blockTotals(block);
+  const [dialog, setDialog] = useState<"budget" | "columns" | "settings" | null>(null);
+  const running = calc.running.get(block.id) ?? null;
+  const owner = members.find((m) => m.id === block.memberId) ?? null;
+  const tableRef = useRef<HTMLTableElement>(null);
+  const pendingFocus = useRef<{ index: number; col: string } | null>(null);
+  const range = monthRange(ym);
+  const today = todayIso();
+  const isSavings = block.kind === "savings";
+  const extras = block.columns;
+
+  /* foco em uma nova linha assim que ela aparece */
+  useEffect(() => {
+    const p = pendingFocus.current;
+    if (!p) return;
+    const el = tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${p.index}:${p.col}"]`);
+    if (el) {
+      el.focus();
+      pendingFocus.current = null;
+    }
+  }, [block.entries.length]);
+
+  const focusCell = (index: number, col: string) => {
+    const el = tableRef.current?.querySelector<HTMLInputElement>(`[data-cell="${index}:${col}"]`);
+    if (el) {
+      el.focus();
+      return true;
+    }
+    return false;
+  };
+
+  const navigate = (index: number, col: string, dir: Nav) => {
+    if (dir === "up") return void focusCell(index - 1, col);
+    if (!focusCell(index + 1, col) && dir === "enter") {
+      pendingFocus.current = { index: index + 1, col };
+      actions.addEntry(block.id);
+    }
+  };
+
+  const addRow = () => {
+    pendingFocus.current = { index: block.entries.length, col: "desc" };
+    actions.addEntry(block.id);
+  };
+
+  const minWidth =
+    36 + 150 + 108 + (running ? 108 : 0) + 128 + (isSavings ? 140 : 0) + 108 + extras.length * 132 + 34;
+
+  // o limite em % é calculado sobre o dinheiro de onde a tabela sai
+  const base = running ? calc.resolve(running.source) : income;
+  const limit = budgetLimit(block, base);
+  const cols = 4 + (running ? 1 : 0) + (isSavings ? 1 : 0) + extras.length;
+
+  return (
+    <section
+      className="border border-grid bg-white shadow-sheet"
+      style={{ borderTop: `3px solid ${meta.color}` }}
+      aria-label={`Tabela ${block.name}`}
+    >
+      {/* ---------- título ---------- */}
+      <div className="flex h-10 items-center border-b border-grid">
+        <div className="min-w-0 flex-1">
+          <TextCell
+            bold
+            label="Nome da tabela"
+            value={block.name}
+            onCommit={(v) => v.trim() && actions.patchBlock(block.id, { name: v.trim() })}
+          />
+        </div>
+        {members.length > 0 && (
+          <button
+            className="hidden px-2 hover:underline sm:block"
+            title="Mudar dono da tabela"
+            onClick={() => setDialog("settings")}
+          >
+            <MemberTag member={owner} />
+          </button>
+        )}
+        <span
+          className="hidden items-center gap-1.5 px-2 text-[12px] font-medium sm:flex"
+          style={{ color: meta.color }}
+        >
+          <span className="h-2 w-2" style={{ background: meta.color }} />
+          {meta.label}
+        </span>
+        {block.kind !== "income" && income > 0 && (
+          <span className="hidden whitespace-nowrap pr-1 text-[12px] text-muted md:inline">
+            {fmtPct(total / income, 1)} da renda
+          </span>
+        )}
+        <span className="whitespace-nowrap px-2 text-[14px] font-semibold">{fmtBRL(total)}</span>
+        <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={16} />}>
+          {block.kind !== "income" && (
+            <MenuItem onClick={() => setDialog("budget")}>
+              {isSavings ? "Definir meta do mês" : "Definir limite do mês"}
+            </MenuItem>
+          )}
+          <MenuItem onClick={() => setDialog("settings")}>
+            {block.kind === "income" ? "Dono da tabela" : "Dono e origem do dinheiro"}
+          </MenuItem>
+          <MenuItem onClick={() => setDialog("columns")}>Colunas extras</MenuItem>
+          {count > 0 && (
+            <>
+              <MenuItem onClick={() => actions.completeBlock(block.id, "done")}>
+                {meta.doneAll}
+              </MenuItem>
+              <MenuItem onClick={() => actions.completeBlock(block.id, "pending")}>
+                Desmarcar todos
+              </MenuItem>
+            </>
+          )}
+          <div className="my-1 border-t border-grid" />
+          <MenuItem
+            danger
+            onClick={() => {
+              if (window.confirm(`Excluir a tabela “${block.name}” e todos os seus lançamentos?`))
+                actions.removeBlock(block.id);
+            }}
+          >
+            Excluir tabela
+          </MenuItem>
+        </Dropdown>
+      </div>
+
+      {/* ---------- grade ---------- */}
+      <div className="overflow-x-auto">
+        <table ref={tableRef} className="sheet" style={{ minWidth }}>
+          <colgroup>
+            <col style={{ width: 36 }} />
+            <col />
+            <col style={{ width: 108 }} />
+            {running && <col style={{ width: 108 }} />}
+            <col style={{ width: 128 }} />
+            {isSavings && <col style={{ width: 140 }} />}
+            <col style={{ width: 108 }} />
+            {extras.map((c) => (
+              <col key={c.id} style={{ width: 132 }} />
+            ))}
+            <col style={{ width: 34 }} />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="gutter" />
+              <th>Descrição</th>
+              <th className="!text-right">Valor (R$)</th>
+              {running && (
+                <th className="!text-right" title={`Começa com ${fmtBRL(running.start)} (${refLabel(running.source, blocks, members)}) e desconta cada linha`}>
+                  Saldo
+                </th>
+              )}
+              <th>{meta.dateLabel}</th>
+              {isSavings && <th>Meta</th>}
+              <th>Status</th>
+              {extras.map((c) => (
+                <th key={c.id} title={c.name} className={c.type === "currency" || c.type === "number" ? "!text-right" : ""}>
+                  {c.name}
+                </th>
+              ))}
+              <th className="!p-0">
+                <button
+                  className="flex h-full w-full items-center justify-center text-muted hover:bg-white hover:text-brand"
+                  title="Adicionar coluna"
+                  aria-label="Adicionar coluna"
+                  onClick={() => setDialog("columns")}
+                >
+                  <Plus size={14} />
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {block.entries.map((e, i) => (
+              <EntryRow
+                key={e.id}
+                entry={e}
+                index={i}
+                block={block}
+                goals={goals}
+                range={range}
+                today={today}
+                actions={actions}
+                navigate={navigate}
+                runningAfter={running ? running.after[i] : null}
+              />
+            ))}
+            {block.entries.length === 0 && (
+              <tr>
+                <td className="gutter" />
+                <td colSpan={cols} className="!px-2 text-[13px] text-faint">
+                  Nenhum lançamento ainda. Clique em “Nova linha” para começar.
+                </td>
+                <td />
+              </tr>
+            )}
+            <tr>
+              <td className="gutter" />
+              <td colSpan={cols} className="!p-0">
+                <button
+                  onClick={addRow}
+                  className="flex h-[31px] w-full items-center gap-1.5 px-2 text-[13px] font-medium text-brand hover:bg-brand-soft"
+                >
+                  <Plus size={14} /> Nova linha
+                </button>
+              </td>
+              <td />
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className="gutter" />
+              <td>Total</td>
+              <td className="text-right">{fmtNum(total)}</td>
+              {running && (
+                <td className="text-right" style={{ color: running.end < 0 ? "#c4361f" : undefined }}>
+                  {fmtNum(running.end)}
+                </td>
+              )}
+              <td />
+              {isSavings && <td />}
+              <td className="whitespace-nowrap text-[12px] font-medium text-muted">
+                {count > 0 ? `${doneCount} de ${count} ${DONE_PLURAL[block.kind]}` : ""}
+              </td>
+              {extras.map((c) => (
+                <td key={c.id} className="text-right">
+                  <ExtraSum col={c} block={block} />
+                </td>
+              ))}
+              <td />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* ---------- origem do dinheiro / limite / meta ---------- */}
+      {running && (
+        <SourceBar running={running} label={refLabel(running.source, blocks, members)} onEdit={() => setDialog("settings")} />
+      )}
+      {block.kind !== "income" && block.budgetType !== "none" && (
+        <BudgetBar block={block} total={total} done={done} limit={limit} income={base} />
+      )}
+
+      {dialog === "budget" && (
+        <BudgetDialog
+          block={block}
+          onClose={() => setDialog(null)}
+          onSave={(budgetType, budgetValue) => actions.patchBlock(block.id, { budgetType, budgetValue })}
+        />
+      )}
+      {dialog === "settings" && (
+        <BlockSettingsDialog
+          block={block}
+          blocks={blocks}
+          members={members}
+          onClose={() => setDialog(null)}
+          onSave={(p) => actions.patchBlock(block.id, p)}
+        />
+      )}
+      {dialog === "columns" && (
+        <ColumnsDialog
+          block={block}
+          onClose={() => setDialog(null)}
+          onSave={(columns) => actions.patchBlock(block.id, { columns })}
+        />
+      )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function EntryRow({
+  entry: e,
+  index: i,
+  block,
+  goals,
+  range,
+  today,
+  actions,
+  navigate,
+  runningAfter,
+}: {
+  entry: Entry;
+  index: number;
+  block: Block;
+  goals: GoalLite[];
+  range: { min: string; max: string };
+  today: string;
+  actions: Actions;
+  navigate: (index: number, col: string, dir: Nav) => void;
+  runningAfter: number | null;
+}) {
+  const meta = KIND_META[block.kind];
+  const patch = (p: Parameters<Actions["patchEntry"]>[2]) => actions.patchEntry(block.id, e.id, p);
+  const overdue = block.kind === "expense" && e.status === "pending" && !!e.date && e.date < today;
+
+  return (
+    <tr className="group hover:bg-[#f6faf7]">
+      <td className="gutter">
+        <span className="group-hover:hidden">{i + 1}</span>
+        <button
+          className="hidden h-[31px] w-full items-center justify-center text-faint hover:bg-red-50 hover:text-expense group-hover:flex focus-visible:flex"
+          aria-label={`Excluir linha ${i + 1}`}
+          title="Excluir linha"
+          onClick={() => actions.removeEntry(block.id, e.id)}
+        >
+          <X size={13} />
+        </button>
+      </td>
+      <td>
+        <TextCell
+          dataCell={`${i}:desc`}
+          label="Descrição"
+          value={e.description}
+          placeholder="Descrição"
+          onCommit={(v) => patch({ description: v })}
+          onNav={(d) => navigate(i, "desc", d)}
+        />
+      </td>
+      <td>
+        <MoneyCell
+          dataCell={`${i}:amount`}
+          label="Valor"
+          value={e.amount}
+          onCommit={(v) => patch({ amount: v })}
+          onNav={(d) => navigate(i, "amount", d)}
+        />
+      </td>
+      {runningAfter !== null && (
+        <td
+          className="bg-[#fafbfb] !px-2 text-right text-[12.5px]"
+          style={{ color: runningAfter < 0 ? "#c4361f" : "#5f6b76", fontWeight: runningAfter < 0 ? 600 : undefined }}
+        >
+          {fmtNum(runningAfter)}
+        </td>
+      )}
+      <td>
+        <DateCell
+          label={meta.dateLabel}
+          value={e.date}
+          min={range.min}
+          max={range.max}
+          alert={overdue}
+          onCommit={(v) => patch({ date: v })}
+        />
+      </td>
+      {block.kind === "savings" && (
+        <td>
+          <GoalCell
+            label="Meta"
+            value={e.goalId}
+            goals={goals}
+            onCommit={(v) => patch({ goalId: v })}
+          />
+        </td>
+      )}
+      <td>
+        <StatusCell
+          status={e.status}
+          color={meta.color}
+          pendingLabel={meta.pending}
+          doneLabel={meta.done}
+          onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
+        />
+      </td>
+      {block.columns.map((c) => (
+        <td key={c.id}>
+          <ExtraCell
+            col={c}
+            entry={e}
+            range={range}
+            dataCell={`${i}:x_${c.id}`}
+            onNav={(d) => navigate(i, `x_${c.id}`, d)}
+            onChange={(v) => patch({ extra: { ...e.extra, [c.id]: v } })}
+          />
+        </td>
+      ))}
+      <td />
+    </tr>
+  );
+}
+
+function ExtraCell({
+  col,
+  entry,
+  range,
+  dataCell,
+  onNav,
+  onChange,
+}: {
+  col: ExtraColumn;
+  entry: Entry;
+  range: { min: string; max: string };
+  dataCell: string;
+  onNav: (d: Nav) => void;
+  onChange: (v: string | number | null) => void;
+}) {
+  const raw = entry.extra[col.id];
+  switch (col.type) {
+    case "currency":
+      return (
+        <MoneyCell
+          dataCell={dataCell}
+          label={col.name}
+          value={typeof raw === "number" ? raw : 0}
+          onCommit={(v) => onChange(v)}
+          onNav={onNav}
+        />
+      );
+    case "number":
+      return (
+        <MoneyCell
+          plain
+          dataCell={dataCell}
+          label={col.name}
+          value={typeof raw === "number" ? Math.round(raw * 100) : 0}
+          onCommit={(v) => onChange(v / 100)}
+          onNav={onNav}
+        />
+      );
+    case "date":
+      return (
+        <DateCell
+          label={col.name}
+          value={typeof raw === "string" ? raw : null}
+          min={range.min}
+          max={range.max}
+          onCommit={onChange}
+        />
+      );
+    default:
+      return (
+        <TextCell
+          dataCell={dataCell}
+          label={col.name}
+          value={typeof raw === "string" ? raw : ""}
+          onCommit={(v) => onChange(v.trim() ? v : null)}
+          onNav={onNav}
+        />
+      );
+  }
+}
+
+function ExtraSum({ col, block }: { col: ExtraColumn; block: Block }) {
+  if (col.type !== "currency" && col.type !== "number") return null;
+  const sum = block.entries.reduce((s, e) => {
+    const v = e.extra[col.id];
+    return s + (typeof v === "number" ? v : 0);
+  }, 0);
+  if (!sum) return null;
+  return <>{col.type === "currency" ? fmtNum(sum) : fmtPlain(sum)}</>;
+}
+
+/* ------------------------------------------------------------------ */
+
+function SourceBar({ running, label, onEdit }: { running: Running; label: string; onEdit: () => void }) {
+  const neg = running.end < 0;
+  const after = running.sharedWith;
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-t border-grid bg-[#fafbfb] px-3 py-1.5 text-[12px]">
+      <span className="text-muted">
+        Sai de{" "}
+        <button className="font-semibold text-ink hover:underline" onClick={onEdit} title="Mudar origem do dinheiro">
+          {label}
+        </button>
+        : {after.length ? "restavam " : ""}
+        <span className="font-semibold text-ink">{fmtBRL(running.start)}</span>
+        {after.length > 0 && (
+          <span title={`Já usado por: ${after.join(", ")}`}>
+            {" "}(depois de {after.length === 1 ? after[0] : `${after.length} tabelas`})
+          </span>
+        )}
+      </span>
+      <span className="font-semibold" style={{ color: neg ? "#c4361f" : "#107c41" }}>
+        {neg ? `Faltam ${fmtBRL(-running.end)}` : `Sobram ${fmtBRL(running.end)}`}
+      </span>
+    </div>
+  );
+}
+
+function BudgetBar({
+  block,
+  total,
+  limit,
+  income,
+}: {
+  block: Block;
+  total: number;
+  done: number;
+  limit: number | null;
+  income: number;
+}) {
+  const isSavings = block.kind === "savings";
+  const what = isSavings ? "Meta do mês" : "Limite do mês";
+
+  if (limit === null || (block.budgetType === "percent" && income <= 0)) {
+    return (
+      <div className="border-t border-grid bg-[#fafbfb] px-3 py-2 text-[12px] text-muted">
+        {what}: {fmtPct(block.budgetValue / 100, 0)} da renda. Adicione receitas para calcular.
+      </div>
+    );
+  }
+
+  const ratio = limit > 0 ? total / limit : total > 0 ? 2 : 0;
+  const over = !isSavings && total > limit;
+  const color = isSavings ? "#1d5fbf" : over ? "#c4361f" : ratio >= 0.8 ? "#d9822b" : "#107c41";
+  const origin =
+    block.budgetType === "percent"
+      ? `${fmtPct(block.budgetValue / 100, block.budgetValue % 1 ? 1 : 0)} da renda`
+      : "valor fixo";
+
+  let message: string;
+  if (isSavings) {
+    message = total >= limit ? "Meta do mês atingida" : `Faltam ${fmtBRL(limit - total)}`;
+  } else {
+    message = over ? `Passou ${fmtBRL(total - limit)} do limite` : `Restam ${fmtBRL(limit - total)}`;
+  }
+
+  return (
+    <div className="border-t border-grid bg-[#fafbfb] px-3 py-2">
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 text-[12px]">
+        <span className="text-muted">
+          {what}: <span className="font-semibold text-ink">{fmtBRL(limit)}</span> ({origin})
+        </span>
+        <span className="font-semibold" style={{ color }}>
+          {message}
+        </span>
+      </div>
+      <div
+        className="h-[6px] w-full bg-[#e3e7eb]"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.min(100, Math.round(ratio * 100))}
+        aria-label={what}
+      >
+        <div className="h-full transition-[width] duration-300" style={{ width: `${Math.min(100, ratio * 100)}%`, background: color }} />
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,199 @@
+import { DatabaseSync } from "node:sqlite";
+import fs from "node:fs";
+import path from "node:path";
+
+export const DB_PATH = process.env.DATABASE_PATH
+  ? path.resolve(process.env.DATABASE_PATH)
+  : path.join(process.cwd(), "data", "financeflow.db");
+
+const BLOCKS_TABLE = (name: string) => `
+CREATE TABLE IF NOT EXISTS ${name} (
+  id           TEXT PRIMARY KEY,
+  user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ym           TEXT NOT NULL,
+  name         TEXT NOT NULL,
+  kind         TEXT NOT NULL CHECK (kind IN ('income','expense','savings','total')),
+  budget_type  TEXT NOT NULL DEFAULT 'none' CHECK (budget_type IN ('none','amount','percent')),
+  budget_value REAL NOT NULL DEFAULT 0,
+  columns      TEXT NOT NULL DEFAULT '[]',
+  position     INTEGER NOT NULL DEFAULT 0,
+  member_id    TEXT REFERENCES members(id) ON DELETE SET NULL,
+  source       TEXT,
+  created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);`;
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  email         TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- meses que o usuário já iniciou
+CREATE TABLE IF NOT EXISTS months (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ym         TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, ym)
+);
+
+-- metas do cofrinho (apartamento, carro, viagem...)
+CREATE TABLE IF NOT EXISTS goals (
+  id            TEXT PRIMARY KEY,
+  user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  target_amount INTEGER NOT NULL DEFAULT 0,
+  target_month  TEXT,
+  color         TEXT NOT NULL DEFAULT '#1d5fbf',
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
+
+-- pessoas da casa (ex.: marido e esposa)
+CREATE TABLE IF NOT EXISTS members (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  color      TEXT NOT NULL DEFAULT '#2a78d6',
+  position   INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
+
+-- tabelas (blocos) de cada mês: Receitas, Contas da casa, Lazer, Cofrinho, Totais...
+${BLOCKS_TABLE("blocks")}
+
+-- linhas de cada tabela
+CREATE TABLE IF NOT EXISTS entries (
+  id          TEXT PRIMARY KEY,
+  block_id    TEXT NOT NULL REFERENCES blocks(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  description TEXT NOT NULL DEFAULT '',
+  amount      INTEGER NOT NULL DEFAULT 0,
+  date        TEXT,
+  status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','done')),
+  goal_id     TEXT REFERENCES goals(id) ON DELETE SET NULL,
+  extra       TEXT NOT NULL DEFAULT '{}',
+  position    INTEGER NOT NULL DEFAULT 0,
+  ref         TEXT,
+  sign        INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`;
+
+// índices ficam depois da migração porque alguns usam colunas novas
+const INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_blocks_user_ym ON blocks(user_id, ym);
+CREATE INDEX IF NOT EXISTS idx_entries_block ON entries(block_id);
+CREATE INDEX IF NOT EXISTS idx_entries_goal ON entries(goal_id);
+`;
+
+/** Atualiza bancos criados antes das pessoas / tabelas de total. */
+function migrate(raw: DatabaseSync) {
+  const cols = (table: string) =>
+    new Set((raw.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
+
+  const entryCols = cols("entries");
+  if (!entryCols.has("ref")) raw.exec("ALTER TABLE entries ADD COLUMN ref TEXT");
+  if (!entryCols.has("sign")) raw.exec("ALTER TABLE entries ADD COLUMN sign INTEGER NOT NULL DEFAULT 1");
+
+  // o CHECK de `kind` mudou: o SQLite exige recriar a tabela
+  if (!cols("blocks").has("member_id")) {
+    raw.exec("PRAGMA foreign_keys = OFF");
+    raw.exec("BEGIN");
+    try {
+      raw.exec(BLOCKS_TABLE("blocks_new"));
+      raw.exec(
+        `INSERT INTO blocks_new (id, user_id, ym, name, kind, budget_type, budget_value, columns, position, created_at)
+         SELECT id, user_id, ym, name, kind, budget_type, budget_value, columns, position, created_at FROM blocks`,
+      );
+      raw.exec("DROP TABLE blocks");
+      raw.exec("ALTER TABLE blocks_new RENAME TO blocks");
+      raw.exec("COMMIT");
+    } catch (err) {
+      raw.exec("ROLLBACK");
+      throw err;
+    } finally {
+      raw.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+}
+
+export type Bind = string | number | bigint | null | Uint8Array;
+
+export interface Stmt {
+  run(...params: Bind[]): { changes: number | bigint; lastInsertRowid: number | bigint };
+  get(...params: Bind[]): Record<string, unknown> | undefined;
+  all(...params: Bind[]): Record<string, unknown>[];
+}
+
+export interface Db {
+  prepare(sql: string): Stmt;
+  exec(sql: string): void;
+  transaction<T extends (...args: never[]) => unknown>(fn: T): T;
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __financeFlowDb: Db | undefined;
+}
+
+// node:sqlite devolve linhas com prototype nulo; o React não aceita isso ao
+// cruzar a fronteira Server -> Client Component. Copiamos para objeto comum.
+const plain = (row: unknown) => Object.assign({}, row as Record<string, unknown>);
+
+function open(): Db {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  const raw = new DatabaseSync(DB_PATH);
+  raw.exec("PRAGMA journal_mode = WAL");
+  raw.exec("PRAGMA foreign_keys = ON");
+  raw.exec(SCHEMA);
+  migrate(raw);
+  raw.exec(INDEXES);
+
+  // node:sqlite não tem transaction(); controlamos a profundidade à mão.
+  let depth = 0;
+
+  const db: Db = {
+    exec: (sql) => raw.exec(sql),
+    prepare(sql) {
+      const st = raw.prepare(sql);
+      return {
+        run: (...params) => st.run(...params) as { changes: number | bigint; lastInsertRowid: number | bigint },
+        get: (...params) => {
+          const row = st.get(...params);
+          return row === undefined ? undefined : plain(row);
+        },
+        all: (...params) => (st.all(...params) as unknown[]).map(plain),
+      };
+    },
+    transaction(fn) {
+      const wrapped = (...args: never[]) => {
+        const sp = `sp_${depth}`;
+        raw.exec(depth === 0 ? "BEGIN" : `SAVEPOINT ${sp}`);
+        depth += 1;
+        try {
+          const out = fn(...args);
+          depth -= 1;
+          raw.exec(depth === 0 ? "COMMIT" : `RELEASE ${sp}`);
+          return out;
+        } catch (err) {
+          depth -= 1;
+          if (depth === 0) raw.exec("ROLLBACK");
+          else raw.exec(`ROLLBACK TO ${sp}`), raw.exec(`RELEASE ${sp}`);
+          throw err;
+        }
+      };
+      return wrapped as unknown as typeof fn;
+    },
+  };
+
+  return db;
+}
+
+export function getDb(): Db {
+  if (!globalThis.__financeFlowDb) globalThis.__financeFlowDb = open();
+  return globalThis.__financeFlowDb;
+}

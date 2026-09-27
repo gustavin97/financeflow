@@ -1,0 +1,31 @@
+import { ApiError, json, readJson, route } from "@/lib/api";
+import { destroySession, hashPassword, verifyPassword } from "@/lib/auth";
+import {
+  deleteUser,
+  findUserById,
+  updateUserName,
+  updateUserPassword,
+} from "@/lib/queries";
+import { accountDeleteSchema, accountPatchSchema } from "@/lib/schemas";
+
+export const PATCH = route(async ({ req, user }) => {
+  const body = accountPatchSchema.parse(await readJson(req));
+  if (body.name) updateUserName(user.id, body.name);
+  if (body.newPassword) {
+    const row = findUserById(user.id);
+    if (!body.currentPassword || !row || !(await verifyPassword(body.currentPassword, row.password_hash)))
+      throw new ApiError("A senha atual está incorreta.", 400);
+    updateUserPassword(user.id, await hashPassword(body.newPassword));
+  }
+  return { ok: true };
+});
+
+export const DELETE = route(async ({ req, user }) => {
+  const body = accountDeleteSchema.parse(await readJson(req));
+  const row = findUserById(user.id);
+  if (!row || !(await verifyPassword(body.password, row.password_hash)))
+    throw new ApiError("Senha incorreta.", 400);
+  deleteUser(user.id);
+  await destroySession();
+  return json({ ok: true });
+});
