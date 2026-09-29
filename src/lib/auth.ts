@@ -10,6 +10,10 @@ import type { SessionUser } from "./types";
 export const COOKIE_NAME = "ff_session";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 dias
 
+// Temporariamente, a aplicação pode ser aberta sem login. Desative com
+// PUBLIC_ACCESS=false antes de disponibilizar dados para outras pessoas.
+export const PUBLIC_ACCESS = process.env.PUBLIC_ACCESS !== "false";
+
 let cachedSecret: Uint8Array | null = null;
 
 function getSecret(): Uint8Array {
@@ -36,6 +40,14 @@ function getSecret(): Uint8Array {
 export const hashPassword = (pw: string) => bcrypt.hash(pw, 10);
 export const verifyPassword = (pw: string, hash: string) => bcrypt.compare(pw, hash);
 
+function getPublicAccessUser(): SessionUser | null {
+  if (!PUBLIC_ACCESS) return null;
+  const user = getDb()
+    .prepare("SELECT id, name, email FROM users ORDER BY created_at LIMIT 1")
+    .get() as SessionUser | undefined;
+  return user ?? null;
+}
+
 export async function createSession(userId: string) {
   const token = await new SignJWT({})
     .setProtectedHeader({ alg: "HS256" })
@@ -61,16 +73,16 @@ export async function destroySession() {
 export async function getSessionUser(): Promise<SessionUser | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE_NAME)?.value;
-  if (!token) return null;
+  if (!token) return getPublicAccessUser();
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (!payload.sub) return null;
     const user = getDb()
       .prepare("SELECT id, name, email FROM users WHERE id = ?")
       .get(payload.sub) as SessionUser | undefined;
-    return user ?? null;
+    return user ?? getPublicAccessUser();
   } catch {
-    return null;
+    return getPublicAccessUser();
   }
 }
 
