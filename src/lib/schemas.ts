@@ -76,6 +76,11 @@ export const blockPatchSchema = z.object({
   cardPaid: cents.min(0).nullable().optional(),
 });
 
+export const reorderSchema = z.object({
+  ym: ymSchema,
+  ids: z.array(z.string().min(1).max(64)).max(200),
+});
+
 export const completeSchema = z.object({ status: z.enum(["pending", "done"]) });
 
 export const entryCreateSchema = z.object({

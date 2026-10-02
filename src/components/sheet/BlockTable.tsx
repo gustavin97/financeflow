@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CreditCard, MoreHorizontal, Plus, X } from "lucide-react";
+import { Check, CreditCard, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CARD_META, KIND_META } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct, fmtPlain } from "@/lib/money";
@@ -135,8 +135,15 @@ export function BlockTable({
       style={{ borderTop: `3px solid ${color}` }}
       aria-label={`Tabela ${block.name}`}
     >
-      {/* ---------- título ---------- */}
-      <div className="flex h-12 items-center border-b border-grid">
+      {/* ---------- título (segure aqui para arrastar a tabela) ---------- */}
+      <div data-drag-handle className="flex h-12 cursor-grab items-center border-b border-grid active:cursor-grabbing">
+        <span
+          className="flex h-full w-7 shrink-0 touch-none items-center justify-center text-faint hover:text-muted"
+          title="Arraste para mover a tabela"
+          aria-hidden
+        >
+          <GripVertical size={16} />
+        </span>
         <div className="min-w-0 flex-1">
           <TextCell
             bold

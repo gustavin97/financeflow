@@ -8,6 +8,7 @@ import { AlertsPanel } from "@/components/AlertsPanel";
 import { MembersDialog } from "@/components/MembersEditor";
 import { BlockTable } from "@/components/sheet/BlockTable";
 import { NewBlockDialog } from "@/components/sheet/blockDialogs";
+import { SortableGrid } from "@/components/sheet/SortableGrid";
 import { TotalTable } from "@/components/sheet/TotalTable";
 import { DistributionBar } from "@/components/sheet/DistributionBar";
 import { MonthTabs } from "@/components/sheet/MonthTabs";
@@ -61,6 +62,14 @@ function MonthView({ ym }: { ym: string }) {
   const members = data?.members ?? [];
   const filter = members.some((x) => x.id === who) || who === "shared" ? who : "all";
   const visible = (data?.blocks ?? []).filter((b) => filter === "all" || ownerScope(b, members) === filter);
+
+  /** com filtro de pessoa, só as tabelas visíveis trocam de lugar entre si */
+  const reorder = (visibleIds: string[]) => {
+    if (!data) return;
+    const shown = new Set(visibleIds);
+    let k = 0;
+    m.reorderBlocks(data.blocks.map((b) => (shown.has(b.id) ? visibleIds[k++] : b.id)));
+  };
 
   const title = ymLabel(ym).replace(/^./, (c) => c.toUpperCase());
   const isNow = ym === currentYm();
@@ -162,16 +171,18 @@ function MonthView({ ym }: { ym: string }) {
               </div>
             )}
 
-            <div
+            <SortableGrid
               className="grid items-start gap-4"
               style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 820px), 1fr))" }}
-            >
-              {visible.map((b) =>
-                b.kind === "total" ? (
-                  <TotalTable key={b.id} block={b} blocks={data.blocks} members={members} calc={calc} actions={m} />
+              ids={visible.map((b) => b.id)}
+              onReorder={reorder}
+              render={(id) => {
+                const b = data.blocks.find((x) => x.id === id);
+                if (!b) return null;
+                return b.kind === "total" ? (
+                  <TotalTable block={b} blocks={data.blocks} members={members} calc={calc} actions={m} />
                 ) : (
                   <BlockTable
-                    key={b.id}
                     block={b}
                     blocks={data.blocks}
                     goals={data.goals}
@@ -181,16 +192,18 @@ function MonthView({ ym }: { ym: string }) {
                     ym={ym}
                     actions={m}
                   />
-                ),
-              )}
-              <button
-                onClick={() => setShowNew(true)}
-                className="flex min-h-[120px] flex-col items-center justify-center gap-1 border border-dashed border-[#aab3bb] bg-white/60 text-[15px] font-medium text-muted transition-colors hover:border-brand hover:bg-brand-soft hover:text-brand"
-              >
-                <Plus size={20} />
-                Nova tabela
-              </button>
-            </div>
+                );
+              }}
+              after={
+                <button
+                  onClick={() => setShowNew(true)}
+                  className="flex min-h-[120px] flex-col items-center justify-center gap-1 border border-dashed border-[#aab3bb] bg-white/60 text-[15px] font-medium text-muted transition-colors hover:border-brand hover:bg-brand-soft hover:text-brand"
+                >
+                  <Plus size={20} />
+                  Nova tabela
+                </button>
+              }
+            />
           </div>
         )}
       </div>

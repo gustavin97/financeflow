@@ -114,6 +114,22 @@ export function useMonth(ym: string) {
     api(`/api/blocks/${id}`, { method: "DELETE" }).catch(fail);
   };
 
+  /** `ids`: todas as tabelas do mês, na nova ordem */
+  const reorderBlocks = (ids: string[]) => {
+    const pos = new Map(ids.map((id, i) => [id, i]));
+    setData((d) =>
+      d
+        ? {
+            ...d,
+            blocks: [...d.blocks]
+              .sort((a, b) => (pos.get(a.id) ?? 1e9) - (pos.get(b.id) ?? 1e9))
+              .map((b, i) => ({ ...b, position: i })),
+          }
+        : d,
+    );
+    api("/api/blocks/reorder", { body: { ym, ids } }).catch(fail);
+  };
+
   const completeBlock = (id: string, status: Status) => {
     mapBlocks((b) => (b.id === id ? { ...b, entries: b.entries.map((e) => ({ ...e, status })) } : b));
     api(`/api/blocks/${id}/complete`, { body: { status } }).catch(fail);
@@ -166,6 +182,7 @@ export function useMonth(ym: string) {
     addBlock,
     patchBlock,
     removeBlock,
+    reorderBlocks,
     completeBlock,
     addEntry,
     patchEntry,

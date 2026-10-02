@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, MoreHorizontal, Plus, X } from "lucide-react";
+import { AlertTriangle, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { refLabel, refOptions, type MonthCalc } from "@/lib/calc";
 import { KIND_META } from "@/lib/kinds";
@@ -44,7 +44,14 @@ export function TotalTable({
       style={{ borderTop: `3px solid ${meta.color}` }}
       aria-label={`Tabela ${block.name}`}
     >
-      <div className="flex h-12 items-center border-b border-grid">
+      <div data-drag-handle className="flex h-12 cursor-grab items-center border-b border-grid active:cursor-grabbing">
+        <span
+          className="flex h-full w-7 shrink-0 touch-none items-center justify-center text-faint hover:text-muted"
+          title="Arraste para mover a tabela"
+          aria-hidden
+        >
+          <GripVertical size={16} />
+        </span>
         <div className="min-w-0 flex-1">
           <TextCell
             bold

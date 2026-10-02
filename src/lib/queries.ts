@@ -472,6 +472,13 @@ function assertPayWith(userId: string, blockRow: Row, payWith: string | null | u
   if (!c) throw new ApiError("Cartão não encontrado neste mês.", 404);
 }
 
+/** Nova ordem das tabelas do mês (arrastar e soltar). Ids desconhecidos são ignorados. */
+export function reorderBlocks(userId: string, ym: string, ids: string[]) {
+  const db = getDb();
+  const st = db.prepare("UPDATE blocks SET position = ? WHERE id = ? AND user_id = ? AND ym = ?");
+  db.transaction(() => ids.forEach((id, i) => st.run(i, id, userId, ym)))();
+}
+
 export function completeBlock(userId: string, id: string, status: Status) {
   ownedBlock(userId, id);
   getDb().prepare("UPDATE entries SET status = ? WHERE block_id = ?").run(status, id);
