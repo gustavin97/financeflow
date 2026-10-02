@@ -6,6 +6,7 @@ export interface BlockTemplate {
   budgetType: BudgetType;
   budgetValue: number;
   columns: { name: string; type: ColType }[];
+  card?: boolean;
 }
 
 /** Modelo inicial de um mês novo. */
@@ -21,6 +22,7 @@ export const DEFAULT_BLOCKS: BlockTemplate[] = [
   {
     name: "Cartão de crédito",
     kind: "expense",
+    card: true,
     budgetType: "none",
     budgetValue: 0,
     columns: [{ name: "Parcela", type: "text" }],

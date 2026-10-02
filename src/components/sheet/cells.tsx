@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, CreditCard } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { centsToInput, fmtNum, fmtPlain, parseMoney } from "@/lib/money";
 import type { Status } from "@/lib/types";
@@ -230,6 +230,43 @@ export function StatusCell({
         {done ? doneLabel : pendingLabel}
       </span>
     </button>
+  );
+}
+
+/* ---------------------------- pagar com (select) ---------------------------- */
+export function PayWithCell({
+  value,
+  cards,
+  onCommit,
+  label,
+}: {
+  value: string | null;
+  cards: { id: string; name: string }[];
+  onCommit: (v: string | null) => void;
+  label?: string;
+}) {
+  const card = cards.find((x) => x.id === value);
+  return (
+    <div className="relative">
+      <CreditCard
+        size={14}
+        className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2"
+        style={{ color: card ? "#8a4fa3" : "#b4bcc4" }}
+      />
+      <select
+        aria-label={label}
+        className={`cell pl-7 ${card ? "font-medium text-[#8a4fa3]" : "text-muted"}`}
+        value={card ? card.id : ""}
+        onChange={(e) => onCommit(e.target.value || null)}
+      >
+        <option value="">Saldo</option>
+        {cards.map((x) => (
+          <option key={x.id} value={x.id}>
+            {x.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 

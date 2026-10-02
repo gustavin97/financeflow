@@ -55,6 +55,14 @@ export const KIND_META: Record<
   },
 };
 
+/** Cartão de crédito: uma tabela de despesa com limite e fatura. */
+export const CARD_META = {
+  label: "Cartão de crédito",
+  short: "Cartão",
+  color: "#8a4fa3",
+  hint: "Limite e fatura. Despesas de outras tabelas podem ser pagas com ele; pagar a fatura sai das receitas.",
+};
+
 /** Cores usadas nos segmentos de despesa da barra de distribuição. */
 export const EXPENSE_PALETTE = [
   "#c4361f",
@@ -108,7 +116,6 @@ export const BLOCK_PRESETS: BlockPreset[] = [
   { name: "Salário", kind: "income", hint: "Entrada fixa do mês", columns: [{ name: "Origem", type: "text" }] },
   { name: "Renda extra", kind: "income", hint: "Freelas, vendas, bônus", columns: [{ name: "Origem", type: "text" }] },
   { name: "Contas da casa", kind: "expense", hint: "Aluguel, luz, água, internet", columns: [{ name: "Categoria", type: "text" }] },
-  { name: "Cartão de crédito", kind: "expense", hint: "Fatura por lançamento", columns: [{ name: "Categoria", type: "text" }, { name: "Parcela", type: "text" }] },
   { name: "Mercado", kind: "expense", hint: "Compras do mês", columns: [{ name: "Local", type: "text" }] },
   { name: "Viagens", kind: "expense", hint: "Passagens, hospedagem, passeios", columns: [{ name: "Destino", type: "text" }, { name: "Categoria", type: "text" }] },
   { name: "Planos e assinaturas", kind: "expense", hint: "Saúde, celular, streaming, academia", columns: [{ name: "Categoria", type: "text" }, { name: "Renovação", type: "date" }] },

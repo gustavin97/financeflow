@@ -54,6 +54,8 @@ function mapBlock(r: Row): Omit<Block, "entries"> {
     position: r.position,
     memberId: r.member_id ?? null,
     source: r.source ?? null,
+    card: r.card === 1,
+    cardPaid: r.card_paid ?? null,
   };
 }
 
@@ -70,6 +72,7 @@ function mapEntry(r: Row): Entry {
     position: r.position,
     ref: r.ref ?? null,
     sign: r.sign === -1 ? -1 : 1,
+    payWith: r.pay_with ?? null,
   };
 }
 
@@ -160,12 +163,16 @@ export function deleteMember(userId: string, id: string) {
 
 /** Saldo acumulado de todos os meses anteriores a `ym`. */
 function carryBefore(userId: string, ym: string): Carry {
-  const rows = getDb()
+  const db = getDb();
+  // linhas de cartão (na tabela do cartão ou pagas com ele) só viram realizado
+  // quando a fatura é paga: aí conta o valor pago (card_paid)
+  const rows = db
     .prepare(
       `SELECT b.kind AS kind,
               COALESCE(SUM(e.amount), 0) AS total,
-              COALESCE(SUM(CASE WHEN e.status = 'done' THEN e.amount ELSE 0 END), 0) AS done
+              COALESCE(SUM(CASE WHEN e.status = 'done' AND b.card = 0 AND c.id IS NULL THEN e.amount ELSE 0 END), 0) AS done
          FROM entries e JOIN blocks b ON b.id = e.block_id
+         LEFT JOIN blocks c ON c.id = e.pay_with AND c.card = 1 AND c.kind = 'expense'
         WHERE b.user_id = ? AND b.ym < ? AND b.kind != 'total'
         GROUP BY b.kind`,
     )
@@ -176,6 +183,13 @@ function carryBefore(userId: string, ym: string): Carry {
     carry.planned += sign * r.total;
     carry.realized += sign * r.done;
   }
+  const paid = db
+    .prepare(
+      `SELECT COALESCE(SUM(card_paid), 0) AS p FROM blocks
+        WHERE user_id = ? AND ym < ? AND card = 1 AND kind = 'expense'`,
+    )
+    .get(userId, ym) as Row;
+  carry.realized -= paid.p as number;
   return carry;
 }
 
@@ -237,13 +251,14 @@ function insertBlock(
     position: number;
     memberId?: string | null;
     source?: string | null;
+    card?: boolean;
   },
 ): string {
   const id = uid();
   getDb()
     .prepare(
-      `INSERT INTO blocks (id, user_id, ym, name, kind, budget_type, budget_value, columns, position, member_id, source)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO blocks (id, user_id, ym, name, kind, budget_type, budget_value, columns, position, member_id, source, card)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     )
     .run(
       id,
@@ -257,6 +272,7 @@ function insertBlock(
       b.position,
       b.memberId ?? null,
       b.source ?? null,
+      b.kind === "expense" && b.card ? 1 : 0,
     );
   return id;
 }
@@ -286,8 +302,8 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
         .prepare("SELECT * FROM blocks WHERE user_id = ? AND ym = ? ORDER BY position, created_at")
         .all(userId, prev.ym) as Row[];
       const insertEntry = db.prepare(
-        `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, extra, position, ref, sign)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, extra, position, ref, sign, pay_with)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       );
       // 1º cria as tabelas, 2º as linhas: assim dá para trocar os ids das referências
       const ids = new Map<string, string>();
@@ -323,6 +339,7 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
               e.position,
               remapRef(e.ref, ids),
               e.sign,
+              (e.payWith && ids.get(e.payWith)) || null,
             );
           }
         }
@@ -354,6 +371,7 @@ export function createBlock(
     columns?: ExtraColumn[];
     memberId?: string | null;
     source?: string | null;
+    card?: boolean;
     rows?: { description: string; ref: string | null; sign: 1 | -1 }[];
   },
 ): Block {
@@ -375,6 +393,7 @@ export function createBlock(
     position: pos,
     memberId: input.memberId ?? null,
     source: input.source ?? null,
+    card: input.card,
   });
   const entries = (input.rows ?? []).map((r) => createEntry(userId, id, r));
   return { ...mapBlock(ownedBlock(userId, id)), entries };
@@ -390,15 +409,31 @@ export function updateBlock(
     columns?: ExtraColumn[];
     memberId?: string | null;
     source?: string | null;
+    card?: boolean;
+    cardPaid?: number | null;
   },
 ) {
   const db = getDb();
-  ownedBlock(userId, id);
+  const current = ownedBlock(userId, id);
+  if ((patch.card || patch.cardPaid != null) && current.kind !== "expense")
+    throw new ApiError("Só tabelas de despesa podem ser cartão de crédito.");
   assertMember(userId, patch.memberId);
   db.transaction(() => {
     if (patch.memberId !== undefined) db.prepare("UPDATE blocks SET member_id = ? WHERE id = ?").run(patch.memberId, id);
     if (patch.source !== undefined) db.prepare("UPDATE blocks SET source = ? WHERE id = ?").run(patch.source, id);
     if (patch.name !== undefined) db.prepare("UPDATE blocks SET name = ? WHERE id = ?").run(patch.name, id);
+    if (patch.card !== undefined) {
+      db.prepare("UPDATE blocks SET card = ? WHERE id = ?").run(patch.card ? 1 : 0, id);
+      if (patch.card) {
+        // um cartão não é pago com outro cartão
+        db.prepare("UPDATE entries SET pay_with = NULL WHERE block_id = ?").run(id);
+      } else {
+        // deixou de ser cartão: as despesas pagas com ele voltam a sair do saldo
+        db.prepare("UPDATE blocks SET card_paid = NULL WHERE id = ?").run(id);
+        db.prepare("UPDATE entries SET pay_with = NULL WHERE pay_with = ?").run(id);
+      }
+    }
+    if (patch.cardPaid !== undefined) db.prepare("UPDATE blocks SET card_paid = ? WHERE id = ?").run(patch.cardPaid, id);
     if (patch.budgetType !== undefined)
       db.prepare("UPDATE blocks SET budget_type = ?, budget_value = ? WHERE id = ?").run(
         patch.budgetType,
@@ -424,6 +459,17 @@ export function updateBlock(
 export function deleteBlock(userId: string, id: string) {
   ownedBlock(userId, id);
   getDb().prepare("DELETE FROM blocks WHERE id = ?").run(id);
+}
+
+/** Cartão onde a linha pode ser lançada: do mesmo usuário e mês, e a linha é de uma despesa comum. */
+function assertPayWith(userId: string, blockRow: Row, payWith: string | null | undefined) {
+  if (!payWith) return;
+  if (blockRow.kind !== "expense" || blockRow.card === 1)
+    throw new ApiError("Só despesas podem ser pagas com cartão.");
+  const c = getDb()
+    .prepare("SELECT 1 FROM blocks WHERE id = ? AND user_id = ? AND ym = ? AND card = 1 AND kind = 'expense'")
+    .get(payWith, userId, blockRow.ym);
+  if (!c) throw new ApiError("Cartão não encontrado neste mês.", 404);
 }
 
 export function completeBlock(userId: string, id: string, status: Status) {
@@ -452,11 +498,12 @@ function assertGoal(userId: string, goalId: string | null | undefined) {
 export function createEntry(
   userId: string,
   blockId: string,
-  init: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "ref" | "sign">> = {},
+  init: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "ref" | "sign" | "payWith">> = {},
 ): Entry {
   const db = getDb();
-  ownedBlock(userId, blockId);
+  const block = ownedBlock(userId, blockId);
   assertGoal(userId, init.goalId);
+  assertPayWith(userId, block, init.payWith);
   const pos = (
     db
       .prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM entries WHERE block_id = ?")
@@ -464,8 +511,8 @@ export function createEntry(
   ).p as number;
   const id = uid();
   db.prepare(
-    `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, position, ref, sign)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, position, ref, sign, pay_with)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     id,
     blockId,
@@ -478,6 +525,7 @@ export function createEntry(
     pos,
     init.ref ?? null,
     init.sign ?? 1,
+    init.payWith ?? null,
   );
   return mapEntry(ownedEntry(userId, id));
 }
@@ -485,11 +533,12 @@ export function createEntry(
 export function updateEntry(
   userId: string,
   id: string,
-  patch: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "extra" | "ref" | "sign">>,
+  patch: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "extra" | "ref" | "sign" | "payWith">>,
 ) {
   const db = getDb();
   const current = ownedEntry(userId, id);
   assertGoal(userId, patch.goalId);
+  if (patch.payWith) assertPayWith(userId, ownedBlock(userId, current.block_id), patch.payWith);
   const sets: string[] = [];
   const vals: Bind[] = [];
   const add = (col: string, v: Bind) => {
@@ -503,6 +552,7 @@ export function updateEntry(
   if (patch.goalId !== undefined) add("goal_id", patch.goalId);
   if (patch.ref !== undefined) add("ref", patch.ref);
   if (patch.sign !== undefined) add("sign", patch.sign);
+  if (patch.payWith !== undefined) add("pay_with", patch.payWith);
   if (patch.extra !== undefined) {
     const block = mapBlock(ownedBlock(userId, current.block_id));
     const allowed = new Set(block.columns.map((c) => c.id));

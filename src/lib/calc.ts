@@ -10,7 +10,7 @@
  *
  * Usado no navegador (planilha e painel) e no servidor.
  */
-import { blockTotals } from "./summary";
+import { cardIds, cardInfo, cashTotals, onCard, type CardInfo } from "./summary";
 import type { Block, Carry, Entry, EntryKind, Member } from "./types";
 
 export const ENTRY_KINDS: EntryKind[] = ["income", "expense", "savings"];
@@ -48,6 +48,8 @@ export interface MonthCalc {
   /** tabelas de total que se referenciam em círculo */
   cyclic: Set<string>;
   sourceOf(block: Block): string;
+  /** cartões de crédito do mês */
+  cards: Map<string, CardInfo>;
 }
 
 const emptyScope = (): ScopeTotals => ({
@@ -82,11 +84,16 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   scope("shared");
   for (const m of members) scope(m.id);
 
+  const cardSet = cardIds(blocks);
+  const cards = new Map<string, CardInfo>();
+  for (const id of cardSet) cards.set(id, cardInfo(blocks.find((b) => b.id === id)!, blocks));
+
   const plainTotals = new Map<string, number>();
   for (const b of blocks) {
     if (b.kind === "total") continue;
-    const t = blockTotals(b);
-    plainTotals.set(b.id, t.total);
+    const t = cashTotals(b, cardSet);
+    // nas referências, um cartão vale a fatura inteira
+    plainTotals.set(b.id, cards.get(b.id)?.bill ?? t.total);
     for (const s of [scope("all"), scope(ownerScope(b, members))]) {
       if (b.kind === "income") (s.income += t.total), (s.incomeDone += t.done);
       else if (b.kind === "expense") (s.expense += t.total), (s.expenseDone += t.done);
@@ -141,6 +148,8 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   const sourceOf = (b: Block) => b.source || defaultSource(b, members);
 
   // cada fonte vai sendo consumida pelas tabelas na ordem em que aparecem.
+  // Linhas pagas com cartão não consomem a fonte; o cartão consome a fatura
+  // (ou o valor pago, quando já foi paga).
   // Gastar das receitas de uma pessoa também consome o total da casa
   // (kind:income:<pessoa> faz parte de kind:income), senão o dinheiro contaria duas vezes.
   const running = new Map<string, Running>();
@@ -155,18 +164,21 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     const used = consumed.get(source) ?? { total: 0, names: [] };
     const start = resolve(source) - used.total;
     let bal = start;
-    const after = b.entries.map((e) => (bal -= e.amount));
+    const card = cards.get(b.id);
+    let after: number[] = [];
+    if (card) bal -= card.paid ?? card.bill;
+    else after = b.entries.map((e) => (onCard(e, cardSet) ? bal : (bal -= e.amount)));
     running.set(b.id, { source, start, after, end: bal, sharedWith: [...used.names] });
     for (const r of containers(source)) {
       const u = consumed.get(r) ?? { total: 0, names: [] };
-      consumed.set(r, { total: u.total + (plainTotals.get(b.id) ?? 0), names: [...u.names, b.name] });
+      consumed.set(r, { total: u.total + (start - bal), names: [...u.names, b.name] });
     }
   }
 
   // força a avaliação para detectar ciclos antes de desenhar
   for (const b of blocks) if (b.kind === "total") blockValue(b.id);
 
-  return { scopes, blockValue, rowValue, resolve, running, cyclic, sourceOf };
+  return { scopes, blockValue, rowValue, resolve, running, cyclic, sourceOf, cards };
 }
 
 /* ------------------------------------------------------------------ */

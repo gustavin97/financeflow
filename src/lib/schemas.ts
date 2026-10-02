@@ -58,6 +58,7 @@ export const blockCreateSchema = z.object({
   columns: z.array(extraColumnSchema).max(12).optional(),
   memberId: memberId.optional(),
   source: ref.optional(),
+  card: z.boolean().optional(),
   rows: z
     .array(z.object({ description: z.string().max(200), ref, sign }))
     .max(30)
@@ -71,6 +72,8 @@ export const blockPatchSchema = z.object({
   columns: z.array(extraColumnSchema).max(12, "No máximo 12 colunas extras por tabela.").optional(),
   memberId: memberId.optional(),
   source: ref.optional(),
+  card: z.boolean().optional(),
+  cardPaid: cents.min(0).nullable().optional(),
 });
 
 export const completeSchema = z.object({ status: z.enum(["pending", "done"]) });
@@ -84,6 +87,7 @@ export const entryCreateSchema = z.object({
   goalId: z.string().nullable().optional(),
   ref: ref.optional(),
   sign: sign.optional(),
+  payWith: z.string().min(1).max(64).nullable().optional(),
 });
 
 export const entryPatchSchema = z.object({
@@ -94,6 +98,7 @@ export const entryPatchSchema = z.object({
   goalId: z.string().nullable().optional(),
   ref: ref.optional(),
   sign: sign.optional(),
+  payWith: z.string().min(1).max(64).nullable().optional(),
   extra: z.record(z.string().max(40), z.union([z.string().max(200), z.number(), z.null()])).optional(),
 });
 

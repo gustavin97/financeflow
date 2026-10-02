@@ -3,12 +3,15 @@
 import { useMemo, useState } from "react";
 import { defaultSource, refLabel, refOptions, type RefGroup } from "@/lib/calc";
 import { newColumnId } from "@/lib/client";
-import { BLOCK_PRESETS, KIND_META } from "@/lib/kinds";
+import { BLOCK_PRESETS, CARD_META, KIND_META } from "@/lib/kinds";
 import type { Block, Kind, Member } from "@/lib/types";
 import { Modal } from "../ui/Modal";
 import type { NewBlock } from "./useMonth";
 
-const KINDS: Kind[] = ["income", "expense", "savings", "total"];
+/** "card" é uma despesa marcada como cartão de crédito */
+type NewKind = Kind | "card";
+const KINDS: NewKind[] = ["income", "expense", "card", "savings", "total"];
+const kindMeta = (k: NewKind) => (k === "card" ? CARD_META : KIND_META[k]);
 
 type Row = NonNullable<NewBlock["rows"]>[number];
 type TotalModel = "income" | "expense" | "left" | "blank";
@@ -40,7 +43,7 @@ export function NewBlockDialog({
   onManageMembers: () => void;
   defaultMemberId: string | null;
 }) {
-  const [kind, setKind] = useState<Kind>("expense");
+  const [kind, setKind] = useState<NewKind>("expense");
   const [memberId, setMemberId] = useState<string | null>(defaultMemberId);
   const [name, setName] = useState("");
   const [preset, setPreset] = useState<string | null>(null);
@@ -74,14 +77,23 @@ export function NewBlockDialog({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const finalName = name.trim() || (kind === "total" ? models.find((m) => m.v === model)!.name : "");
+    const finalName =
+      name.trim() ||
+      (kind === "total"
+        ? models.find((m) => m.v === model)!.name
+        : kind === "card"
+          ? who
+            ? `Cartão (${who.name})`
+            : "Cartão de crédito"
+          : "");
     if (!finalName) return setError("Dê um nome à tabela.");
     const p = BLOCK_PRESETS.find((x) => x.name === preset && x.kind === kind);
     setBusy(true);
     try {
       await onCreate({
         name: finalName,
-        kind,
+        kind: kind === "card" ? "expense" : kind,
+        card: kind === "card" || undefined,
         memberId,
         columns: p?.columns?.map((c) => ({ id: newColumnId(), ...c })),
         rows: kind === "total" ? totalRows(model, who, members) : undefined,
@@ -100,7 +112,7 @@ export function NewBlockDialog({
           <span className="label">Tipo de tabela</span>
           <div className="grid gap-2 sm:grid-cols-2">
             {KINDS.map((k) => {
-              const m = KIND_META[k];
+              const m = kindMeta(k);
               const active = kind === k;
               return (
                 <button
@@ -184,6 +196,12 @@ export function NewBlockDialog({
               subtraindo.
             </p>
           </div>
+        ) : kind === "card" ? (
+          <p className="text-[14px] text-muted">
+            Depois de criar, defina o limite no rodapé do cartão. Nas tabelas de despesa aparece a coluna “Pagar com”:
+            escolha o cartão e a despesa entra na fatura, descontando o limite em vez do saldo. Ao pagar a fatura, o
+            valor pago sai das receitas.
+          </p>
         ) : (
           <div>
             <span className="label">Modelos</span>
@@ -217,7 +235,13 @@ export function NewBlockDialog({
             value={name}
             maxLength={60}
             onChange={(e) => setName(e.target.value)}
-            placeholder={kind === "total" ? models.find((m) => m.v === model)!.name : "Ex.: Mercado"}
+            placeholder={
+              kind === "total"
+                ? models.find((m) => m.v === model)!.name
+                : kind === "card"
+                  ? "Ex.: Nubank, Itaú..."
+                  : "Ex.: Mercado"
+            }
           />
           {preset && (
             <p className="mt-1 text-[14px] text-muted">
@@ -295,10 +319,15 @@ export function BlockSettingsDialog({
   blocks: Block[];
   members: Member[];
   onClose: () => void;
-  onSave: (p: { memberId: string | null; source?: string | null }) => void;
+  onSave: (p: { memberId: string | null; source?: string | null; card?: boolean }) => void;
 }) {
   const [memberId, setMemberId] = useState(block.memberId);
   const [source, setSource] = useState(block.source);
+  const [card, setCard] = useState(block.card);
+  const isExpense = block.kind === "expense";
+  const charged = isExpense
+    ? blocks.reduce((n, b) => n + b.entries.filter((e) => e.payWith === block.id).length, 0)
+    : 0;
   const hasSource = block.kind === "expense" || block.kind === "savings";
   const groups = useMemo(() => refOptions(blocks, members, block.id), [blocks, members, block.id]);
   const def = refLabel(defaultSource({ memberId }, members), blocks, members);
@@ -309,7 +338,17 @@ export function BlockSettingsDialog({
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave(hasSource ? { memberId, source } : { memberId });
+          if (block.card && !card && charged > 0) {
+            const ok = window.confirm(
+              `${charged} despesa(s) estão sendo pagas com este cartão e vão voltar a sair do saldo. Continuar?`,
+            );
+            if (!ok) return;
+          }
+          onSave({
+            memberId,
+            ...(hasSource ? { source } : {}),
+            ...(isExpense && card !== block.card ? { card } : {}),
+          });
           onClose();
         }}
       >
@@ -334,10 +373,24 @@ export function BlockSettingsDialog({
             <p className="mt-1 text-[14px] text-muted">Cadastre as pessoas em “Pessoas” no topo da planilha.</p>
           )}
         </div>
+        {isExpense && (
+          <label className="flex cursor-pointer items-start gap-2.5 border border-grid px-3 py-2 hover:bg-head">
+            <input
+              type="checkbox"
+              className="mt-1 accent-[#8a4fa3]"
+              checked={card}
+              onChange={(e) => setCard(e.target.checked)}
+            />
+            <span>
+              <span className="block text-[15px] font-semibold">Esta tabela é um cartão de crédito</span>
+              <span className="block text-[14px] text-muted">{CARD_META.hint}</span>
+            </span>
+          </label>
+        )}
         {hasSource && (
           <div>
             <label className="label" htmlFor="set-source">
-              De onde sai o dinheiro?
+              {card ? "De onde sai o pagamento da fatura?" : "De onde sai o dinheiro?"}
             </label>
             <RefSelect id="set-source" value={source} groups={groups} onChange={setSource} emptyLabel={`Padrão: ${def}`} />
             <p className="mt-1 text-[14px] text-muted">

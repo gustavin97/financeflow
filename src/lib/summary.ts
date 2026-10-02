@@ -1,4 +1,4 @@
-import type { Block, Carry } from "./types";
+import type { Block, Carry, Entry } from "./types";
 
 export function blockTotals(b: Block) {
   let total = 0;
@@ -15,6 +15,64 @@ export function blockTotals(b: Block) {
     }
   }
   return { total, done, pending: total - done, count, doneCount };
+}
+
+/* ------------------------------------------------------------------ */
+/* Cartão de crédito                                                   */
+/* ------------------------------------------------------------------ */
+
+/** Ids dos cartões de crédito do mês. */
+export function cardIds(blocks: Block[]): Set<string> {
+  return new Set(blocks.filter((b) => b.card && b.kind === "expense").map((b) => b.id));
+}
+
+/** Linha de despesa paga com um cartão deste mês (não sai do saldo, entra na fatura). */
+export const onCard = (e: Entry, cards: Set<string>) => !!e.payWith && cards.has(e.payWith);
+
+export interface CardInfo {
+  /** limite do cartão; null = sem limite definido */
+  limit: number | null;
+  /** compras lançadas direto na tabela do cartão */
+  own: number;
+  /** despesas de outras tabelas pagas com o cartão */
+  charges: { block: Block; entry: Entry }[];
+  chargesTotal: number;
+  /** fatura = own + chargesTotal */
+  bill: number;
+  paid: number | null;
+  /** limite − fatura */
+  available: number | null;
+}
+
+export function cardInfo(card: Block, blocks: Block[]): CardInfo {
+  const own = card.entries.reduce((s, e) => s + e.amount, 0);
+  const charges: CardInfo["charges"] = [];
+  for (const b of blocks) {
+    if (b.id === card.id || b.kind !== "expense" || b.card) continue;
+    for (const e of b.entries) if (e.payWith === card.id) charges.push({ block: b, entry: e });
+  }
+  const chargesTotal = charges.reduce((s, c) => s + c.entry.amount, 0);
+  const bill = own + chargesTotal;
+  const limit = card.budgetType === "amount" && card.budgetValue > 0 ? Math.round(card.budgetValue) : null;
+  return { limit, own, charges, chargesTotal, bill, paid: card.cardPaid, available: limit === null ? null : limit - bill };
+}
+
+/**
+ * Valores que entram nas somas do mês. Despesas pagas com cartão contam como
+ * previstas na própria tabela, mas só viram "pagas" quando a fatura é paga:
+ * o realizado do cartão é o valor pago da fatura.
+ */
+export function cashTotals(b: Block, cards: Set<string>) {
+  if (b.card && cards.has(b.id)) {
+    return { total: b.entries.reduce((s, e) => s + e.amount, 0), done: b.cardPaid ?? 0 };
+  }
+  let total = 0;
+  let done = 0;
+  for (const e of b.entries) {
+    total += e.amount;
+    if (e.status === "done" && !onCard(e, cards)) done += e.amount;
+  }
+  return { total, done };
 }
 
 export interface MonthSummary {
@@ -42,10 +100,11 @@ export function computeSummary(blocks: Block[], carry: Carry): MonthSummary {
     savings: 0,
     savingsDone: 0,
   };
+  const cards = cardIds(blocks);
   for (const b of blocks) {
     // tabelas de total só repetem valores das outras: não entram nas somas
     if (b.kind === "total") continue;
-    const t = blockTotals(b);
+    const t = cashTotals(b, cards);
     if (b.kind === "income") {
       s.income += t.total;
       s.incomeDone += t.done;

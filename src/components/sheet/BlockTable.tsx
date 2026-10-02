@@ -1,17 +1,17 @@
 "use client";
 
-import { MoreHorizontal, Plus, X } from "lucide-react";
+import { Check, CreditCard, MoreHorizontal, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { KIND_META } from "@/lib/kinds";
+import { CARD_META, KIND_META } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct, fmtPlain } from "@/lib/money";
 import { monthRange, todayIso } from "@/lib/dates";
 import { refLabel, type MonthCalc, type Running } from "@/lib/calc";
-import { blockTotals, budgetLimit } from "@/lib/summary";
+import { blockTotals, budgetLimit, type CardInfo } from "@/lib/summary";
 import type { Block, Entry, ExtraColumn, GoalLite, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog } from "./blockDialogs";
-import { DateCell, GoalCell, MoneyCell, StatusCell, TextCell, type Nav } from "./cells";
+import { DateCell, GoalCell, MoneyCell, PayWithCell, StatusCell, TextCell, type Nav } from "./cells";
 import { BudgetDialog, ColumnsDialog } from "./dialogs";
 import type { useMonth } from "./useMonth";
 
@@ -21,6 +21,8 @@ type Actions = Pick<
 >;
 
 const DONE_PLURAL = { income: "recebidos", expense: "pagos", savings: "guardados", total: "" } as const;
+
+const shortDate = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "");
 
 export function BlockTable({
   block,
@@ -41,8 +43,12 @@ export function BlockTable({
   ym: string;
   actions: Actions;
 }) {
+  const card = calc.cards.get(block.id) ?? null;
   const meta = KIND_META[block.kind];
-  const { total, done, count, doneCount } = blockTotals(block);
+  const color = card ? CARD_META.color : meta.color;
+  const { total: ownTotal, done, count, doneCount } = blockTotals(block);
+  // o cartão mostra a fatura inteira: compras da própria tabela + despesas pagas com ele
+  const total = card ? card.bill : ownTotal;
   const [dialog, setDialog] = useState<"budget" | "columns" | "settings" | null>(null);
   const running = calc.running.get(block.id) ?? null;
   const owner = members.find((m) => m.id === block.memberId) ?? null;
@@ -52,6 +58,25 @@ export function BlockTable({
   const today = todayIso();
   const isSavings = block.kind === "savings";
   const extras = block.columns;
+
+  // cartões em que as linhas desta despesa podem ser lançadas
+  const cards = card || block.kind !== "expense" ? [] : blocks.filter((b) => calc.cards.has(b.id));
+  const showPayWith = cards.length > 0;
+  const showStatus = !card;
+  const showSaldo = card ? card.limit !== null : !!running;
+  const onCardTotal = showPayWith
+    ? block.entries.reduce((s, e) => s + (e.payWith && calc.cards.has(e.payWith) ? e.amount : 0), 0)
+    : 0;
+
+  /* coluna "Saldo": no cartão, é o limite que vai sendo consumido */
+  let saldo: number[] = running?.after ?? [];
+  let chargeSaldo: number[] = [];
+  if (card && card.limit !== null) {
+    let bal = card.limit;
+    saldo = block.entries.map((e) => (bal -= e.amount));
+    chargeSaldo = card.charges.map((c) => (bal -= c.entry.amount));
+  }
+  const saldoEnd = card ? (card.available ?? 0) : (running?.end ?? 0);
 
   /* foco em uma nova linha assim que ela aparece */
   useEffect(() => {
@@ -87,17 +112,27 @@ export function BlockTable({
   };
 
   const minWidth =
-    42 + 180 + 128 + (running ? 128 : 0) + 152 + (isSavings ? 166 : 0) + 128 + extras.length * 156 + 40;
+    42 +
+    180 +
+    128 +
+    (showSaldo ? 128 : 0) +
+    152 +
+    (isSavings ? 166 : 0) +
+    (showStatus ? 128 : 0) +
+    (showPayWith ? 150 : 0) +
+    extras.length * 156 +
+    40;
 
   // o limite em % é calculado sobre o dinheiro de onde a tabela sai
   const base = running ? calc.resolve(running.source) : income;
   const limit = budgetLimit(block, base);
-  const cols = 4 + (running ? 1 : 0) + (isSavings ? 1 : 0) + extras.length;
+  const cols =
+    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + (showStatus ? 1 : 0) + (showPayWith ? 1 : 0) + extras.length;
 
   return (
     <section
       className="border border-grid bg-white shadow-sheet"
-      style={{ borderTop: `3px solid ${meta.color}` }}
+      style={{ borderTop: `3px solid ${color}` }}
       aria-label={`Tabela ${block.name}`}
     >
       {/* ---------- título ---------- */}
@@ -119,44 +154,54 @@ export function BlockTable({
             <MemberTag member={owner} />
           </button>
         )}
-        <span
-          className="hidden items-center gap-1.5 px-2 text-[14px] font-medium sm:flex"
-          style={{ color: meta.color }}
-        >
-          <span className="h-2 w-2" style={{ background: meta.color }} />
-          {meta.label}
+        <span className="hidden items-center gap-1.5 px-2 text-[14px] font-medium sm:flex" style={{ color }}>
+          {card ? <CreditCard size={15} /> : <span className="h-2 w-2" style={{ background: color }} />}
+          {card ? CARD_META.short : meta.label}
         </span>
         {block.kind !== "income" && income > 0 && (
           <span className="hidden whitespace-nowrap pr-1 text-[14px] text-muted md:inline">
             {fmtPct(total / income, 1)} da renda
           </span>
         )}
-        <span className="whitespace-nowrap px-2 text-[16px] font-semibold">{fmtBRL(total)}</span>
+        <span className="whitespace-nowrap px-2 text-[16px] font-semibold" title={card ? "Fatura do mês" : undefined}>
+          {fmtBRL(total)}
+        </span>
         <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={18} />}>
-          {block.kind !== "income" && (
+          {block.kind !== "income" && !card && (
             <MenuItem onClick={() => setDialog("budget")}>
               {isSavings ? "Definir meta do mês" : "Definir limite do mês"}
             </MenuItem>
           )}
           <MenuItem onClick={() => setDialog("settings")}>
-            {block.kind === "income" ? "Dono da tabela" : "Dono e origem do dinheiro"}
+            {block.kind === "income"
+              ? "Dono da tabela"
+              : block.kind === "expense"
+                ? "Dono, origem do dinheiro e cartão"
+                : "Dono e origem do dinheiro"}
           </MenuItem>
           <MenuItem onClick={() => setDialog("columns")}>Colunas extras</MenuItem>
-          {count > 0 && (
-            <>
-              <MenuItem onClick={() => actions.completeBlock(block.id, "done")}>
-                {meta.doneAll}
-              </MenuItem>
-              <MenuItem onClick={() => actions.completeBlock(block.id, "pending")}>
-                Desmarcar todos
-              </MenuItem>
-            </>
+          {card ? (
+            <MenuItem
+              onClick={() => actions.patchBlock(block.id, { cardPaid: card.paid === null ? card.bill : null })}
+            >
+              {card.paid === null ? "Marcar fatura como paga" : "Desmarcar pagamento da fatura"}
+            </MenuItem>
+          ) : (
+            count > 0 && (
+              <>
+                <MenuItem onClick={() => actions.completeBlock(block.id, "done")}>{meta.doneAll}</MenuItem>
+                <MenuItem onClick={() => actions.completeBlock(block.id, "pending")}>Desmarcar todos</MenuItem>
+              </>
+            )
           )}
           <div className="my-1 border-t border-grid" />
           <MenuItem
             danger
             onClick={() => {
-              if (window.confirm(`Excluir a tabela “${block.name}” e todos os seus lançamentos?`))
+              const extra = card?.charges.length
+                ? ` As ${card.charges.length} despesas pagas com ele voltam a sair do saldo.`
+                : "";
+              if (window.confirm(`Excluir a tabela “${block.name}” e todos os seus lançamentos?${extra}`))
                 actions.removeBlock(block.id);
             }}
           >
@@ -172,10 +217,11 @@ export function BlockTable({
             <col style={{ width: 42 }} />
             <col />
             <col style={{ width: 128 }} />
-            {running && <col style={{ width: 128 }} />}
+            {showSaldo && <col style={{ width: 128 }} />}
             <col style={{ width: 152 }} />
             {isSavings && <col style={{ width: 166 }} />}
-            <col style={{ width: 128 }} />
+            {showStatus && <col style={{ width: 128 }} />}
+            {showPayWith && <col style={{ width: 150 }} />}
             {extras.map((c) => (
               <col key={c.id} style={{ width: 156 }} />
             ))}
@@ -186,14 +232,25 @@ export function BlockTable({
               <th className="gutter" />
               <th>Descrição</th>
               <th className="!text-right">Valor (R$)</th>
-              {running && (
-                <th className="!text-right" title={`Começa com ${fmtBRL(running.start)} (${refLabel(running.source, blocks, members)}) e desconta cada linha`}>
-                  Saldo
-                </th>
-              )}
-              <th>{meta.dateLabel}</th>
+              {showSaldo &&
+                (card ? (
+                  <th className="!text-right" title={`Começa com o limite de ${fmtBRL(card.limit ?? 0)} e desconta cada compra`}>
+                    Limite disp.
+                  </th>
+                ) : (
+                  running && (
+                    <th
+                      className="!text-right"
+                      title={`Começa com ${fmtBRL(running.start)} (${refLabel(running.source, blocks, members)}) e desconta cada linha`}
+                    >
+                      Saldo
+                    </th>
+                  )
+                ))}
+              <th>{card ? "Data" : meta.dateLabel}</th>
               {isSavings && <th>Meta</th>}
-              <th>Status</th>
+              {showStatus && <th>Status</th>}
+              {showPayWith && <th title="Saldo: sai do dinheiro da tabela. Cartão: entra na fatura e desconta o limite">Pagar com</th>}
               {extras.map((c) => (
                 <th key={c.id} title={c.name} className={c.type === "currency" || c.type === "number" ? "!text-right" : ""}>
                   {c.name}
@@ -223,14 +280,18 @@ export function BlockTable({
                 today={today}
                 actions={actions}
                 navigate={navigate}
-                runningAfter={running ? running.after[i] : null}
+                saldo={showSaldo ? (saldo[i] ?? 0) : null}
+                showStatus={showStatus}
+                cards={showPayWith ? cards : null}
               />
             ))}
             {block.entries.length === 0 && (
               <tr>
                 <td className="gutter" />
                 <td colSpan={cols} className="!px-2 text-[15px] text-faint">
-                  Nenhum lançamento ainda. Clique em “Nova linha” para começar.
+                  {card
+                    ? "Nenhuma compra lançada direto no cartão. Clique em “Nova linha” ou escolha este cartão em “Pagar com” nas despesas."
+                    : "Nenhum lançamento ainda. Clique em “Nova linha” para começar."}
                 </td>
                 <td />
               </tr>
@@ -247,22 +308,64 @@ export function BlockTable({
               </td>
               <td />
             </tr>
+            {card && card.charges.length > 0 && (
+              <>
+                <tr>
+                  <td className="gutter" />
+                  <td colSpan={cols} className="!px-2 bg-[#f7f2fa] text-[14px] font-medium" style={{ color }}>
+                    Despesas de outras tabelas pagas com este cartão
+                  </td>
+                  <td className="bg-[#f7f2fa]" />
+                </tr>
+                {card.charges.map((c, i) => (
+                  <tr key={c.entry.id} className="text-[14.5px]">
+                    <td className="gutter">
+                      <CreditCard size={13} className="mx-auto" style={{ color }} />
+                    </td>
+                    <td className="!px-2">
+                      <span className="block truncate">
+                        {c.entry.description || <span className="text-faint">Sem descrição</span>}
+                        <span className="text-muted"> · {c.block.name}</span>
+                      </span>
+                    </td>
+                    <td className="!px-2 text-right">{fmtNum(c.entry.amount)}</td>
+                    {showSaldo && (
+                      <td
+                        className="bg-[#fafbfb] !px-2 text-right"
+                        style={{ color: chargeSaldo[i] < 0 ? "#c4361f" : "#5f6b76", fontWeight: chargeSaldo[i] < 0 ? 600 : undefined }}
+                      >
+                        {fmtNum(chargeSaldo[i])}
+                      </td>
+                    )}
+                    <td className="!px-2 text-muted">{shortDate(c.entry.date)}</td>
+                    <td colSpan={extras.length + 1} />
+                  </tr>
+                ))}
+              </>
+            )}
           </tbody>
           <tfoot>
             <tr>
               <td className="gutter" />
-              <td>Total</td>
+              <td>{card ? "Fatura" : "Total"}</td>
               <td className="text-right">{fmtNum(total)}</td>
-              {running && (
-                <td className="text-right" style={{ color: running.end < 0 ? "#c4361f" : undefined }}>
-                  {fmtNum(running.end)}
+              {showSaldo && (
+                <td className="text-right" style={{ color: saldoEnd < 0 ? "#c4361f" : undefined }}>
+                  {fmtNum(saldoEnd)}
                 </td>
               )}
               <td />
               {isSavings && <td />}
-              <td className="whitespace-nowrap text-[14px] font-medium text-muted">
-                {count > 0 ? `${doneCount} de ${count} ${DONE_PLURAL[block.kind]}` : ""}
-              </td>
+              {showStatus && (
+                <td className="whitespace-nowrap text-[14px] font-medium text-muted">
+                  {count > 0 ? `${doneCount} de ${count} ${DONE_PLURAL[block.kind]}` : ""}
+                </td>
+              )}
+              {showPayWith && (
+                <td className="whitespace-nowrap text-[14px] font-medium" style={{ color: CARD_META.color }}>
+                  {onCardTotal ? `${fmtNum(onCardTotal)} no cartão` : ""}
+                </td>
+              )}
               {extras.map((c) => (
                 <td key={c.id} className="text-right">
                   <ExtraSum col={c} block={block} />
@@ -274,12 +377,30 @@ export function BlockTable({
         </table>
       </div>
 
-      {/* ---------- origem do dinheiro / limite / meta ---------- */}
-      {running && (
-        <SourceBar running={running} label={refLabel(running.source, blocks, members)} onEdit={() => setDialog("settings")} />
-      )}
-      {block.kind !== "income" && block.budgetType !== "none" && (
-        <BudgetBar block={block} total={total} done={done} limit={limit} income={base} />
+      {/* ---------- origem do dinheiro / limite / meta / fatura ---------- */}
+      {card ? (
+        <CardBar
+          block={block}
+          card={card}
+          running={running}
+          sourceLabel={running ? refLabel(running.source, blocks, members) : ""}
+          onEditSource={() => setDialog("settings")}
+          onPatch={(p) => actions.patchBlock(block.id, p)}
+        />
+      ) : (
+        <>
+          {running && (
+            <SourceBar
+              running={running}
+              label={refLabel(running.source, blocks, members)}
+              onEdit={() => setDialog("settings")}
+              onCard={onCardTotal}
+            />
+          )}
+          {block.kind !== "income" && block.budgetType !== "none" && (
+            <BudgetBar block={block} total={total} done={done} limit={limit} income={base} />
+          )}
+        </>
       )}
 
       {dialog === "budget" && (
@@ -320,7 +441,9 @@ function EntryRow({
   today,
   actions,
   navigate,
-  runningAfter,
+  saldo,
+  showStatus,
+  cards,
 }: {
   entry: Entry;
   index: number;
@@ -330,11 +453,15 @@ function EntryRow({
   today: string;
   actions: Actions;
   navigate: (index: number, col: string, dir: Nav) => void;
-  runningAfter: number | null;
+  saldo: number | null;
+  showStatus: boolean;
+  /** cartões disponíveis para "Pagar com"; null = coluna escondida */
+  cards: Block[] | null;
 }) {
   const meta = KIND_META[block.kind];
   const patch = (p: Parameters<Actions["patchEntry"]>[2]) => actions.patchEntry(block.id, e.id, p);
-  const overdue = block.kind === "expense" && e.status === "pending" && !!e.date && e.date < today;
+  const onCard = !!cards && !!e.payWith && cards.some((c) => c.id === e.payWith);
+  const overdue = block.kind === "expense" && showStatus && !onCard && e.status === "pending" && !!e.date && e.date < today;
 
   return (
     <tr className="group hover:bg-[#f6faf7]">
@@ -368,17 +495,18 @@ function EntryRow({
           onNav={(d) => navigate(i, "amount", d)}
         />
       </td>
-      {runningAfter !== null && (
+      {saldo !== null && (
         <td
           className="bg-[#fafbfb] !px-2 text-right text-[14.5px]"
-          style={{ color: runningAfter < 0 ? "#c4361f" : "#5f6b76", fontWeight: runningAfter < 0 ? 600 : undefined }}
+          style={{ color: saldo < 0 ? "#c4361f" : "#5f6b76", fontWeight: saldo < 0 ? 600 : undefined }}
+          title={onCard ? "Pago com cartão: não sai do saldo" : undefined}
         >
-          {fmtNum(runningAfter)}
+          {fmtNum(saldo)}
         </td>
       )}
       <td>
         <DateCell
-          label={meta.dateLabel}
+          label={block.card ? "Data" : meta.dateLabel}
           value={e.date}
           min={range.min}
           max={range.max}
@@ -396,15 +524,32 @@ function EntryRow({
           />
         </td>
       )}
-      <td>
-        <StatusCell
-          status={e.status}
-          color={meta.color}
-          pendingLabel={meta.pending}
-          doneLabel={meta.done}
-          onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
-        />
-      </td>
+      {showStatus && (
+        <td>
+          {onCard ? (
+            <span
+              className="flex h-[37px] items-center gap-2 px-2 text-[14.5px] font-medium"
+              style={{ color: CARD_META.color }}
+              title="Fica paga quando a fatura do cartão for paga"
+            >
+              <CreditCard size={16} /> Na fatura
+            </span>
+          ) : (
+            <StatusCell
+              status={e.status}
+              color={meta.color}
+              pendingLabel={meta.pending}
+              doneLabel={meta.done}
+              onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
+            />
+          )}
+        </td>
+      )}
+      {cards && (
+        <td>
+          <PayWithCell label="Pagar com" value={e.payWith} cards={cards} onCommit={(v) => patch({ payWith: v })} />
+        </td>
+      )}
       {block.columns.map((c) => (
         <td key={c.id}>
           <ExtraCell
@@ -421,6 +566,137 @@ function EntryRow({
     </tr>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Cartão: limite, fatura e pagamento                                  */
+/* ------------------------------------------------------------------ */
+
+function CardBar({
+  block,
+  card,
+  running,
+  sourceLabel,
+  onEditSource,
+  onPatch,
+}: {
+  block: Block;
+  card: CardInfo;
+  running: Running | null;
+  sourceLabel: string;
+  onEditSource: () => void;
+  onPatch: (p: { budgetType?: "none" | "amount"; budgetValue?: number; cardPaid?: number | null }) => void;
+}) {
+  const paid = card.paid;
+  const ratio = card.limit ? card.bill / card.limit : 0;
+  const over = card.available !== null && card.available < 0;
+  const barColor = over ? "#c4361f" : ratio >= 0.8 ? "#d9822b" : CARD_META.color;
+  const left = paid !== null ? card.bill - paid : 0;
+
+  return (
+    <div className="space-y-2 border-t border-grid bg-[#fafbfb] px-3 py-2 text-[14px]">
+      {/* limite */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <label className="flex items-center gap-2 text-muted">
+          Limite do cartão
+          <span className="w-[130px] border border-grid bg-white">
+            <MoneyCell
+              label="Limite do cartão"
+              value={card.limit ?? 0}
+              onCommit={(v) =>
+                onPatch(v > 0 ? { budgetType: "amount", budgetValue: v } : { budgetType: "none", budgetValue: 0 })
+              }
+            />
+          </span>
+        </label>
+        <span className="text-muted">
+          Fatura: <span className="font-semibold text-ink">{fmtBRL(card.bill)}</span>
+          {card.chargesTotal > 0 && (
+            <span>
+              {" "}
+              ({fmtBRL(card.own)} aqui + {fmtBRL(card.chargesTotal)} de outras tabelas)
+            </span>
+          )}
+        </span>
+        {card.available !== null ? (
+          <span className="font-semibold" style={{ color: over ? "#c4361f" : "#107c41" }}>
+            {over ? `Passou ${fmtBRL(-card.available)} do limite` : `Disponível ${fmtBRL(card.available)}`}
+          </span>
+        ) : (
+          <span className="text-faint">Defina o limite para ver quanto ainda dá para gastar</span>
+        )}
+      </div>
+      {card.limit !== null && (
+        <div
+          className="h-[6px] w-full bg-[#e3e7eb]"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.min(100, Math.round(ratio * 100))}
+          aria-label={`Limite usado de ${block.name}`}
+        >
+          <div className="h-full transition-[width] duration-300" style={{ width: `${Math.min(100, ratio * 100)}%`, background: barColor }} />
+        </div>
+      )}
+
+      {/* pagamento da fatura */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-grid pt-2">
+        <span className="text-muted">
+          Pagamento sai de{" "}
+          <button className="font-semibold text-ink hover:underline" onClick={onEditSource} title="Mudar de onde sai o pagamento">
+            {sourceLabel}
+          </button>
+          {running && (
+            <>
+              : {running.sharedWith.length ? "restavam " : ""}
+              <span className="font-semibold text-ink">{fmtBRL(running.start)}</span>
+            </>
+          )}
+        </span>
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-muted">Valor pago</span>
+          <span className="w-[130px] border border-grid bg-white">
+            <MoneyCell label="Valor pago da fatura" value={paid ?? 0} onCommit={(v) => onPatch({ cardPaid: v > 0 ? v : null })} />
+          </span>
+          {paid === null ? (
+            <button
+              className="btn btn-sm"
+              disabled={card.bill <= 0}
+              onClick={() => onPatch({ cardPaid: card.bill })}
+              style={{ borderColor: CARD_META.color, color: CARD_META.color }}
+            >
+              Pagar fatura ({fmtBRL(card.bill)})
+            </button>
+          ) : (
+            <>
+              <span className="flex items-center gap-1 font-semibold text-income">
+                <Check size={15} strokeWidth={3} /> Paga
+              </span>
+              <button className="text-muted hover:underline" onClick={() => onPatch({ cardPaid: null })}>
+                Desfazer
+              </button>
+            </>
+          )}
+        </span>
+      </div>
+      {(running || left !== 0) && (
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+          <span className="text-muted">
+            {left > 0 && `Ficaram ${fmtBRL(left)} da fatura sem pagar. `}
+            {left < 0 && `Pago ${fmtBRL(-left)} a mais que a fatura. `}
+            {paid === null && card.bill > 0 && "Até pagar, a fatura conta como prevista."}
+          </span>
+          {running && (
+            <span className="font-semibold" style={{ color: running.end < 0 ? "#c4361f" : "#107c41" }}>
+              {running.end < 0 ? `Faltam ${fmtBRL(-running.end)}` : `Sobram ${fmtBRL(running.end)}`}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 
 function ExtraCell({
   col,
@@ -495,7 +771,18 @@ function ExtraSum({ col, block }: { col: ExtraColumn; block: Block }) {
 
 /* ------------------------------------------------------------------ */
 
-function SourceBar({ running, label, onEdit }: { running: Running; label: string; onEdit: () => void }) {
+function SourceBar({
+  running,
+  label,
+  onEdit,
+  onCard,
+}: {
+  running: Running;
+  label: string;
+  onEdit: () => void;
+  /** total das linhas pagas com cartão (não saem daqui) */
+  onCard: number;
+}) {
   const neg = running.end < 0;
   const after = running.sharedWith;
   return (
@@ -512,6 +799,7 @@ function SourceBar({ running, label, onEdit }: { running: Running; label: string
             {" "}(depois de {after.length === 1 ? after[0] : `${after.length} tabelas`})
           </span>
         )}
+        {onCard > 0 && <span> · {fmtBRL(onCard)} vão para o cartão</span>}
       </span>
       <span className="font-semibold" style={{ color: neg ? "#c4361f" : "#107c41" }}>
         {neg ? `Faltam ${fmtBRL(-running.end)}` : `Sobram ${fmtBRL(running.end)}`}

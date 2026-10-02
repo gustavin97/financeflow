@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS ${name} (
   position     INTEGER NOT NULL DEFAULT 0,
   member_id    TEXT REFERENCES members(id) ON DELETE SET NULL,
   source       TEXT,
+  card         INTEGER NOT NULL DEFAULT 0,
+  card_paid    INTEGER,
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );`;
 
@@ -79,6 +81,7 @@ CREATE TABLE IF NOT EXISTS entries (
   position    INTEGER NOT NULL DEFAULT 0,
   ref         TEXT,
   sign        INTEGER NOT NULL DEFAULT 1,
+  pay_with    TEXT REFERENCES blocks(id) ON DELETE SET NULL,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `;
@@ -88,9 +91,10 @@ const INDEXES = `
 CREATE INDEX IF NOT EXISTS idx_blocks_user_ym ON blocks(user_id, ym);
 CREATE INDEX IF NOT EXISTS idx_entries_block ON entries(block_id);
 CREATE INDEX IF NOT EXISTS idx_entries_goal ON entries(goal_id);
+CREATE INDEX IF NOT EXISTS idx_entries_pay_with ON entries(pay_with);
 `;
 
-/** Atualiza bancos criados antes das pessoas / tabelas de total. */
+/** Atualiza bancos criados antes das pessoas / tabelas de total / cartões. */
 function migrate(raw: DatabaseSync) {
   const cols = (table: string) =>
     new Set((raw.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
@@ -119,6 +123,13 @@ function migrate(raw: DatabaseSync) {
       raw.exec("PRAGMA foreign_keys = ON");
     }
   }
+
+  // cartão de crédito
+  const blockCols = cols("blocks");
+  if (!blockCols.has("card")) raw.exec("ALTER TABLE blocks ADD COLUMN card INTEGER NOT NULL DEFAULT 0");
+  if (!blockCols.has("card_paid")) raw.exec("ALTER TABLE blocks ADD COLUMN card_paid INTEGER");
+  if (!entryCols.has("pay_with"))
+    raw.exec("ALTER TABLE entries ADD COLUMN pay_with TEXT REFERENCES blocks(id) ON DELETE SET NULL");
 }
 
 export type Bind = string | number | bigint | null | Uint8Array;

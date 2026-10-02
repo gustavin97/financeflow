@@ -5,7 +5,7 @@
 import { refLabel, type MonthCalc } from "./calc";
 import { currentYm, todayIso } from "./dates";
 import { fmtBRL, fmtPct } from "./money";
-import { blockTotals, budgetLimit } from "./summary";
+import { blockTotals, budgetLimit, cardIds, onCard } from "./summary";
 import type { Block, Carry, Member } from "./types";
 
 export type AlertLevel = "danger" | "warning" | "ok";
@@ -109,9 +109,29 @@ export function monthAlerts(input: {
       });
   }
 
+  /* ---------- cartões ---------- */
+  for (const [id, c] of calc.cards) {
+    const b = blocks.find((x) => x.id === id)!;
+    if (c.available !== null && c.available < 0)
+      out.push({
+        id: `card-${id}`,
+        level: "danger",
+        title: `Fatura de “${b.name}” passou do limite em ${fmtBRL(-c.available)}`,
+        detail: `Limite ${fmtBRL(c.limit!)} · fatura ${fmtBRL(c.bill)}.`,
+      });
+    else if (c.limit && c.bill >= c.limit * 0.8)
+      out.push({
+        id: `card-${id}`,
+        level: "warning",
+        title: `“${b.name}” já usou ${fmtPct(c.bill / c.limit)} do limite`,
+        detail: `Disponível ${fmtBRL(c.available!)} de ${fmtBRL(c.limit)}.`,
+      });
+  }
+  const cards = cardIds(blocks);
+
   /* ---------- limites das tabelas ---------- */
   for (const b of blocks) {
-    if (b.kind !== "expense" || b.budgetType === "none") continue;
+    if (b.kind !== "expense" || b.card || b.budgetType === "none") continue;
     const r = calc.running.get(b.id);
     const limit = budgetLimit(b, r ? calc.resolve(r.source) : all.income);
     if (!limit) continue;
@@ -138,9 +158,9 @@ export function monthAlerts(input: {
     const overdue: { d: string; v: number }[] = [];
     const dueSoon: { d: string; v: number }[] = [];
     for (const b of blocks) {
-      if (b.kind !== "expense") continue;
+      if (b.kind !== "expense" || b.card) continue;
       for (const e of b.entries) {
-        if (e.status !== "pending" || !e.date || e.amount <= 0) continue;
+        if (e.status !== "pending" || !e.date || e.amount <= 0 || onCard(e, cards)) continue;
         const item = { d: e.description || b.name, v: e.amount };
         if (e.date < today) overdue.push(item);
         else if (e.date <= soon) dueSoon.push(item);
@@ -172,9 +192,15 @@ export function monthAlerts(input: {
     const moves: { date: string; v: number }[] = [];
     for (const b of blocks) {
       if (b.kind === "total") continue;
+      const card = calc.cards.get(b.id);
+      if (card) {
+        // fatura ainda não paga: sai do caixa (sem data, o cenário mais prudente é hoje)
+        if (card.paid === null && card.bill > 0) moves.push({ date: today, v: -card.bill });
+        continue;
+      }
       const sign = b.kind === "income" ? 1 : -1;
       for (const e of b.entries)
-        if (e.status === "pending" && e.amount)
+        if (e.status === "pending" && e.amount && !onCard(e, cards))
           // sem data: receitas no fim do mês, saídas hoje (o cenário mais prudente)
           moves.push({ date: e.date ?? (sign > 0 ? end : today), v: sign * e.amount });
     }

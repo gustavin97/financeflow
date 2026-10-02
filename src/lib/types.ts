@@ -37,6 +37,8 @@ export interface Entry {
   ref: string | null;
   /** tabelas de total: 1 soma, -1 subtrai */
   sign: 1 | -1;
+  /** despesas: id do cartão de crédito que paga a linha. null = sai do saldo */
+  payWith: string | null;
 }
 
 export interface Block {
@@ -53,6 +55,10 @@ export interface Block {
   memberId: string | null;
   /** despesas/cofrinho: de onde sai o dinheiro (ref). null = padrão */
   source: string | null;
+  /** despesa que é um cartão de crédito: tem limite (budgetValue) e fatura */
+  card: boolean;
+  /** cartão: valor pago da fatura (centavos). null = ainda não paga */
+  cardPaid: number | null;
   entries: Entry[];
 }
 

@@ -5,15 +5,16 @@ import { api, errMsg } from "@/lib/client";
 import type { Block, Entry, ExtraColumn, Kind, Member, MonthPayload, Status } from "@/lib/types";
 
 export type BlockPatch = Partial<
-  Pick<Block, "name" | "budgetType" | "budgetValue" | "columns" | "memberId" | "source">
+  Pick<Block, "name" | "budgetType" | "budgetValue" | "columns" | "memberId" | "source" | "card" | "cardPaid">
 >;
 export type EntryPatch = Partial<
-  Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "extra" | "ref" | "sign">
+  Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "extra" | "ref" | "sign" | "payWith">
 >;
 export interface NewBlock {
   name: string;
   kind: Kind;
   memberId?: string | null;
+  card?: boolean;
   columns?: ExtraColumn[];
   rows?: { description: string; ref: string | null; sign: 1 | -1 }[];
 }
@@ -77,9 +78,15 @@ export function useMonth(ym: string) {
   };
 
   const patchBlock = (id: string, patch: BlockPatch) => {
+    // mesmas regras do servidor ao ligar/desligar o cartão
+    const local: BlockPatch = patch.card === false ? { ...patch, cardPaid: null } : patch;
     mapBlocks((b) => {
-      if (b.id !== id) return b;
-      const next = { ...b, ...patch };
+      if (b.id !== id) {
+        if (patch.card === false && b.entries.some((e) => e.payWith === id))
+          return { ...b, entries: b.entries.map((e) => (e.payWith === id ? { ...e, payWith: null } : e)) };
+        return b;
+      }
+      const next = { ...b, ...local };
       if (patch.columns) {
         const keep = new Set(patch.columns.map((c) => c.id));
         next.entries = b.entries.map((e) => ({
@@ -87,13 +94,23 @@ export function useMonth(ym: string) {
           extra: Object.fromEntries(Object.entries(e.extra).filter(([k]) => keep.has(k))),
         }));
       }
+      if (patch.card) next.entries = next.entries.map((e) => ({ ...e, payWith: null }));
       return next;
     });
     api(`/api/blocks/${id}`, { method: "PATCH", body: patch }).catch(fail);
   };
 
   const removeBlock = (id: string) => {
-    setData((d) => (d ? { ...d, blocks: d.blocks.filter((b) => b.id !== id) } : d));
+    setData((d) =>
+      d
+        ? {
+            ...d,
+            blocks: d.blocks
+              .filter((b) => b.id !== id)
+              .map((b) => ({ ...b, entries: b.entries.map((e) => (e.payWith === id ? { ...e, payWith: null } : e)) })),
+          }
+        : d,
+    );
     api(`/api/blocks/${id}`, { method: "DELETE" }).catch(fail);
   };
 
