@@ -107,6 +107,22 @@ export const entryPatchSchema = z.object({
   extra: z.record(z.string().max(40), z.union([z.string().max(200), z.number(), z.null()])).optional(),
 });
 
+export const installmentCreateSchema = z
+  .object({
+    blockId: z.string().min(1).max(64),
+    description: z.string().trim().min(1, "Descreva a compra.").max(200),
+    /** valor total da compra, em centavos */
+    total: cents.min(1, "Informe o valor da compra."),
+    count: z.number().int().min(2, "Parcele em pelo menos 2 vezes.").max(72, "No máximo 72 parcelas."),
+    /** parcela que cai neste mês (compras feitas antes começam no meio) */
+    currentNo: z.number().int().min(1),
+    date: isoDate.optional(),
+    payWith: z.string().min(1).max(64).nullable().optional(),
+  })
+  .refine((v) => v.currentNo <= v.count, { message: "A parcela atual passa do número de parcelas." });
+
+export const installmentDeleteSchema = z.object({ fromYm: ymSchema });
+
 export const goalCreateSchema = z.object({
   name: z.string().trim().min(1, "Dê um nome à meta.").max(60),
   targetAmount: z.number().int().min(0).max(MAX_CENTS),

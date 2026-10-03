@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CreditCard, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
+import { CalendarRange, Check, CreditCard, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CARD_META, KIND_META } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct, fmtPlain } from "@/lib/money";
@@ -12,12 +12,19 @@ import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog } from "./blockDialogs";
 import { DateCell, GoalCell, MoneyCell, PayWithCell, StatusCell, TextCell, type Nav } from "./cells";
-import { BudgetDialog, ColumnsDialog } from "./dialogs";
+import { BudgetDialog, ColumnsDialog, InstallmentDialog } from "./dialogs";
 import type { useMonth } from "./useMonth";
 
 type Actions = Pick<
   ReturnType<typeof useMonth>,
-  "patchBlock" | "removeBlock" | "completeBlock" | "addEntry" | "patchEntry" | "removeEntry"
+  | "patchBlock"
+  | "removeBlock"
+  | "completeBlock"
+  | "addEntry"
+  | "patchEntry"
+  | "removeEntry"
+  | "addInstallment"
+  | "removeInstallment"
 >;
 
 const DONE_PLURAL = { income: "recebidos", expense: "pagos", savings: "guardados", total: "" } as const;
@@ -49,7 +56,7 @@ export function BlockTable({
   const { total: ownTotal, done, count, doneCount } = blockTotals(block);
   // o cartão mostra a fatura inteira: compras da própria tabela + despesas pagas com ele
   const total = card ? card.bill : ownTotal;
-  const [dialog, setDialog] = useState<"budget" | "columns" | "settings" | null>(null);
+  const [dialog, setDialog] = useState<"budget" | "columns" | "settings" | "installment" | null>(null);
   const running = calc.running.get(block.id) ?? null;
   const owner = members.find((m) => m.id === block.memberId) ?? null;
   const tableRef = useRef<HTMLTableElement>(null);
@@ -309,12 +316,23 @@ export function BlockTable({
             <tr>
               <td className="gutter" />
               <td colSpan={cols} className="!p-0">
-                <button
-                  onClick={addRow}
-                  className="flex h-[37px] w-full items-center gap-1.5 px-2 text-[15px] font-medium text-brand hover:bg-brand-soft"
-                >
-                  <Plus size={16} /> Nova linha
-                </button>
+                <div className="flex">
+                  <button
+                    onClick={addRow}
+                    className="flex h-[37px] flex-1 items-center gap-1.5 px-2 text-[15px] font-medium text-brand hover:bg-brand-soft"
+                  >
+                    <Plus size={16} /> Nova linha
+                  </button>
+                  {block.kind === "expense" && (
+                    <button
+                      onClick={() => setDialog("installment")}
+                      className="flex h-[37px] items-center gap-1.5 whitespace-nowrap px-3 text-[15px] font-medium text-muted hover:bg-brand-soft hover:text-brand"
+                      title="Lança a compra aqui e as próximas parcelas nos meses seguintes"
+                    >
+                      <CalendarRange size={16} /> Compra parcelada
+                    </button>
+                  )}
+                </div>
               </td>
               <td />
             </tr>
@@ -335,6 +353,12 @@ export function BlockTable({
                     <td className="!px-2">
                       <span className="block truncate">
                         {c.entry.description || <span className="text-faint">Sem descrição</span>}
+                        {c.entry.installment && (
+                          <span className="text-muted">
+                            {" "}
+                            ({c.entry.installment.no}/{c.entry.installment.count})
+                          </span>
+                        )}
                         <span className="text-muted"> · {c.block.name}</span>
                       </span>
                     </td>
@@ -429,6 +453,15 @@ export function BlockTable({
           onSave={(p) => actions.patchBlock(block.id, p)}
         />
       )}
+      {dialog === "installment" && (
+        <InstallmentDialog
+          block={block}
+          ym={ym}
+          cards={cards}
+          onClose={() => setDialog(null)}
+          onSave={(input) => actions.addInstallment(block.id, input)}
+        />
+      )}
       {dialog === "columns" && (
         <ColumnsDialog
           block={block}
@@ -487,14 +520,19 @@ function EntryRow({
         </button>
       </td>
       <td>
-        <TextCell
-          dataCell={`${i}:desc`}
-          label="Descrição"
-          value={e.description}
-          placeholder="Descrição"
-          onCommit={(v) => patch({ description: v })}
-          onNav={(d) => navigate(i, "desc", d)}
-        />
+        <div className="flex items-center">
+          <div className="min-w-0 flex-1">
+            <TextCell
+              dataCell={`${i}:desc`}
+              label="Descrição"
+              value={e.description}
+              placeholder="Descrição"
+              onCommit={(v) => patch({ description: v })}
+              onNav={(d) => navigate(i, "desc", d)}
+            />
+          </div>
+          {e.installment && <InstallmentTag entry={e} onEnd={actions.removeInstallment} />}
+        </div>
       </td>
       <td>
         <MoneyCell
@@ -574,6 +612,39 @@ function EntryRow({
       ))}
       <td />
     </tr>
+  );
+}
+
+/** Etiqueta "3/12" da parcela; o menu encerra o parcelamento. */
+function InstallmentTag({ entry, onEnd }: { entry: Entry; onEnd: (id: string) => void }) {
+  const inst = entry.installment!;
+  const tag = `${inst.no}/${inst.count}`;
+  const cls = "mr-1 shrink-0 rounded-full bg-head px-2 py-0.5 text-[13px] font-semibold tabular-nums text-muted";
+  if (!inst.id) return <span className={cls} title={`Parcela ${tag} (parcelamento encerrado)`}>{tag}</span>;
+  return (
+    <Dropdown
+      label={`Parcela ${tag} de ${entry.description || "compra parcelada"}`}
+      trigger={tag}
+      triggerClassName={`${cls} hover:bg-brand-soft hover:text-brand`}
+    >
+      <p className="px-3 py-1.5 text-[14px] text-muted">
+        Parcela {inst.no} de {inst.count}
+        {inst.count > inst.no ? `. Faltam ${inst.count - inst.no} depois desta.` : ". É a última."}
+      </p>
+      <MenuItem
+        danger
+        onClick={() => {
+          if (
+            window.confirm(
+              `Encerrar o parcelamento de “${entry.description}”? Esta parcela e as dos próximos meses são apagadas; as anteriores ficam.`,
+            )
+          )
+            onEnd(inst.id!);
+        }}
+      >
+        Encerrar parcelamento
+      </MenuItem>
+    </Dropdown>
   );
 }
 

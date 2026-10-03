@@ -18,6 +18,15 @@ export interface NewBlock {
   columns?: ExtraColumn[];
   rows?: { description: string; ref: string | null; sign: 1 | -1 }[];
 }
+export interface NewInstallment {
+  description: string;
+  /** valor total da compra, em centavos */
+  total: number;
+  count: number;
+  currentNo: number;
+  date: string | null;
+  payWith: string | null;
+}
 export type StartMode = "default" | "blank" | "copy" | "structure";
 
 /**
@@ -161,6 +170,18 @@ export function useMonth(ym: string) {
     api(`/api/entries/${id}`, { method: "DELETE" }).catch(fail);
   };
 
+  /* ---------- compras parceladas (as parcelas podem criar tabelas: recarrega o mês) ---------- */
+  const addInstallment = async (blockId: string, input: NewInstallment) => {
+    await api("/api/installments", { body: { blockId, ...input } });
+    await load();
+  };
+
+  /** apaga as parcelas deste mês em diante; as anteriores ficam */
+  const removeInstallment = (installmentId: string) => {
+    mapBlocks((b) => ({ ...b, entries: b.entries.filter((e) => e.installment?.id !== installmentId) }));
+    api(`/api/installments/${installmentId}`, { method: "DELETE", body: { fromYm: ym } }).catch(fail);
+  };
+
   /* ---------- pessoas (a lista é editada no diálogo; aqui só refletimos) ---------- */
   const setMembers = (members: Member[]) => {
     setData((d) => {
@@ -187,5 +208,7 @@ export function useMonth(ym: string) {
     addEntry,
     patchEntry,
     removeEntry,
+    addInstallment,
+    removeInstallment,
   };
 }

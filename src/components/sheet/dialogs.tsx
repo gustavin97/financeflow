@@ -2,10 +2,12 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { newColumnId } from "@/lib/client";
-import { centsToInput, parseMoney } from "@/lib/money";
+import { errMsg, newColumnId } from "@/lib/client";
+import { addMonths, monthRange, todayIso, ymShort } from "@/lib/dates";
+import { centsToInput, fmtBRL, parseMoney } from "@/lib/money";
 import type { Block, BudgetType, ColType, ExtraColumn } from "@/lib/types";
 import { Modal } from "../ui/Modal";
+import type { NewInstallment } from "./useMonth";
 
 /* ------------------------------------------------------------------ */
 /* Limite / meta do mês                                                */
@@ -231,6 +233,216 @@ export function ColumnsDialog({
           </button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Compra parcelada                                                    */
+/* ------------------------------------------------------------------ */
+export function InstallmentDialog({
+  block,
+  ym,
+  cards,
+  onClose,
+  onSave,
+}: {
+  block: Block;
+  ym: string;
+  /** cartões do mês para "Pagar com" (vazio quando a tabela já é um cartão) */
+  cards: Block[];
+  onClose: () => void;
+  onSave: (input: NewInstallment) => Promise<void>;
+}) {
+  const range = monthRange(ym);
+  const today = todayIso();
+  const [description, setDescription] = useState("");
+  const [mode, setMode] = useState<"total" | "each">("total");
+  const [valueText, setValueText] = useState("");
+  const [countText, setCountText] = useState("12");
+  const [currentText, setCurrentText] = useState("1");
+  const [date, setDate] = useState(today >= range.min && today <= range.max ? today : "");
+  const [payWith, setPayWith] = useState(cards[0]?.id ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const value = parseMoney(valueText);
+  const count = Number(countText);
+  const current = Number(currentText);
+  const validCount = Number.isInteger(count) && count >= 2 && count <= 72;
+  const validCurrent = validCount && Number.isInteger(current) && current >= 1 && current <= count;
+  const total = value && value > 0 && validCount ? (mode === "total" ? value : value * count) : null;
+  const each = total ? Math.floor(total / count) : 0;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!description.trim()) return setError("Descreva a compra.");
+    if (!validCount) return setError("Informe de 2 a 72 parcelas.");
+    if (!total) return setError("Informe o valor da compra.");
+    if (!validCurrent) return setError(`A parcela deste mês vai de 1 a ${count}.`);
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave({
+        description: description.trim(),
+        total,
+        count,
+        currentNo: current,
+        date: date || null,
+        payWith: payWith || null,
+      });
+      onClose();
+    } catch (err) {
+      setError(errMsg(err));
+      setSaving(false);
+    }
+  }
+
+  const modes = [
+    { v: "total", label: "Valor total" },
+    { v: "each", label: "Valor da parcela" },
+  ] as const;
+
+  return (
+    <Modal title={`Compra parcelada em “${block.name}”`} onClose={onClose}>
+      <form onSubmit={submit} className="space-y-4">
+        <div>
+          <label className="label" htmlFor="inst-desc">
+            Descrição
+          </label>
+          <input
+            id="inst-desc"
+            className="field"
+            autoFocus
+            maxLength={200}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Ex.: Geladeira"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {modes.map((o) => (
+            <label
+              key={o.v}
+              className={`flex cursor-pointer items-center gap-2 border px-3 py-2 text-[15px] ${
+                mode === o.v ? "border-brand bg-brand-soft font-semibold" : "border-grid hover:bg-head"
+              }`}
+            >
+              <input
+                type="radio"
+                name="inst-mode"
+                className="accent-[#107c41]"
+                checked={mode === o.v}
+                onChange={() => setMode(o.v)}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="label" htmlFor="inst-value">
+              {mode === "total" ? "Total (R$)" : "Parcela (R$)"}
+            </label>
+            <input
+              id="inst-value"
+              className="field"
+              inputMode="decimal"
+              value={valueText}
+              onChange={(e) => setValueText(e.target.value)}
+              placeholder={mode === "total" ? "2.400,00" : "200,00"}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="inst-count">
+              Parcelas
+            </label>
+            <input
+              id="inst-count"
+              className="field"
+              inputMode="numeric"
+              value={countText}
+              onChange={(e) => setCountText(e.target.value.replace(/\D/g, ""))}
+            />
+          </div>
+          <div>
+            <label
+              className="label"
+              htmlFor="inst-current"
+              title="Para compras feitas antes: em qual parcela ela está neste mês"
+            >
+              Parcela deste mês
+            </label>
+            <input
+              id="inst-current"
+              className="field"
+              inputMode="numeric"
+              value={currentText}
+              onChange={(e) => setCurrentText(e.target.value.replace(/\D/g, ""))}
+            />
+          </div>
+        </div>
+
+        <div className={`grid gap-3 ${cards.length ? "grid-cols-2" : ""}`}>
+          <div>
+            <label className="label" htmlFor="inst-date">
+              Data da compra
+            </label>
+            <input
+              id="inst-date"
+              type="date"
+              className="field"
+              min={range.min}
+              max={range.max}
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          {cards.length > 0 && (
+            <div>
+              <label className="label" htmlFor="inst-pay">
+                Pagar com
+              </label>
+              <select id="inst-pay" className="field" value={payWith} onChange={(e) => setPayWith(e.target.value)}>
+                <option value="">Saldo</option>
+                {cards.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        <p className="rounded-lg bg-head px-3 py-2 text-[15px] text-muted">
+          {total && validCurrent ? (
+            <>
+              <span className="font-semibold text-ink">
+                {count}x de {fmtBRL(each)}
+              </span>
+              {total !== each * count && ` (a 1ª de ${fmtBRL(total - each * (count - 1))})`} · total {fmtBRL(total)}
+              <br />
+              Parcelas {current} a {count}, de {ymShort(ym)} a {ymShort(addMonths(ym, count - current))}. Cada uma
+              entra em “{block.name}” no mês dela.
+            </>
+          ) : (
+            "Preencha o valor e as parcelas para ver como fica."
+          )}
+        </p>
+
+        {error && <p className="text-[15px] text-expense">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" className="btn" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn btn-primary" disabled={saving}>
+            {saving ? "Lançando..." : "Lançar parcelas"}
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

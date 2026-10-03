@@ -8,7 +8,7 @@ import { ApiError } from "./errors";
 import { DEFAULT_BLOCKS } from "./templates";
 import { GOAL_COLORS, MEMBER_COLORS } from "./kinds";
 import { remapRef } from "./calc";
-import { addMonths, shiftDateToMonth } from "./dates";
+import { addMonths, daysInMonth, diffMonths, shiftDateToMonth } from "./dates";
 import type {
   AnnualPayload,
   Block,
@@ -73,6 +73,7 @@ function mapEntry(r: Row): Entry {
     ref: r.ref ?? null,
     sign: r.sign === -1 ? -1 : 1,
     payWith: r.pay_with ?? null,
+    installment: r.inst_no ? { id: r.inst_id ?? null, no: r.inst_no, count: r.inst_count } : null,
   };
 }
 
@@ -314,8 +315,9 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
         if (nb.source) db.prepare("UPDATE blocks SET source = ? WHERE id = ?").run(remapRef(nb.source, ids), newId);
         // linhas de tabelas de total são estrutura (fórmulas): copiadas nos dois modos
         if (mode === "copy" || nb.kind === "total") {
+          // parcelas não são copiadas: cada mês recebe a sua (materializeInstallments)
           const entries = db
-            .prepare("SELECT * FROM entries WHERE block_id = ? ORDER BY position, created_at")
+            .prepare("SELECT * FROM entries WHERE block_id = ? AND inst_no IS NULL ORDER BY position, created_at")
             .all(br.id) as Row[];
           for (const er of entries) {
             const e = mapEntry(er);
@@ -346,6 +348,7 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
       }
     }
     db.prepare("INSERT INTO months (user_id, ym) VALUES (?,?)").run(userId, ym);
+    materializeInstallments(userId, ym);
   });
   run();
 }
@@ -383,7 +386,7 @@ export function createBlock(
       .get(userId, input.ym) as Row
   ).p as number;
   // criar uma tabela também "inicia" o mês, caso ainda não exista
-  db.prepare("INSERT OR IGNORE INTO months (user_id, ym) VALUES (?,?)").run(userId, input.ym);
+  const newMonth = db.prepare("INSERT OR IGNORE INTO months (user_id, ym) VALUES (?,?)").run(userId, input.ym).changes > 0;
   const id = insertBlock(userId, input.ym, {
     name: input.name,
     kind: input.kind,
@@ -396,6 +399,7 @@ export function createBlock(
     card: input.card,
   });
   const entries = (input.rows ?? []).map((r) => createEntry(userId, id, r));
+  if (newMonth) materializeInstallments(userId, input.ym);
   return { ...mapBlock(ownedBlock(userId, id)), entries };
 }
 
@@ -577,6 +581,160 @@ export function deleteEntry(userId: string, id: string) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Compras parceladas                                                  */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Um parcelamento guarda a compra (valor total, nº de parcelas, mês da parcela
+ * `first_no`) e a tabela onde as parcelas caem, pelo nome: as tabelas são
+ * recriadas a cada mês, então "Nubank" de outubro e de novembro têm ids diferentes.
+ * Cada parcela vira uma linha comum no mês dela, criada quando o parcelamento
+ * é lançado (meses já iniciados) ou quando o mês é iniciado depois.
+ */
+
+/** Valor da parcela `no`: a primeira leva os centavos que sobram da divisão. */
+export function installmentAmount(total: number, count: number, no: number): number {
+  const each = Math.floor(total / count);
+  return no === 1 ? total - each * (count - 1) : each;
+}
+
+/** Tabela de despesa do mês com esse nome; criada se ainda não existir. */
+function ensureExpenseBlock(
+  userId: string,
+  ym: string,
+  name: string,
+  card: boolean,
+  memberId: string | null,
+): string {
+  const db = getDb();
+  const found = db
+    .prepare(
+      `SELECT id FROM blocks WHERE user_id = ? AND ym = ? AND kind = 'expense' AND card = ? AND lower(name) = lower(?)
+        ORDER BY position LIMIT 1`,
+    )
+    .get(userId, ym, card ? 1 : 0, name) as Row | undefined;
+  if (found) return found.id;
+  const member = memberId && db.prepare("SELECT 1 FROM members WHERE id = ? AND user_id = ?").get(memberId, userId);
+  const pos = (
+    db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM blocks WHERE user_id = ? AND ym = ?").get(userId, ym) as Row
+  ).p as number;
+  return insertBlock(userId, ym, {
+    name,
+    kind: "expense",
+    budgetType: "none",
+    budgetValue: 0,
+    columns: [],
+    position: pos,
+    memberId: member ? memberId : null,
+    card,
+  });
+}
+
+/** Cria as parcelas que caem em `ym` e ainda não existem (só de `onlyId`, se informado). */
+function materializeInstallments(userId: string, ym: string, onlyId?: string) {
+  const db = getDb();
+  const plans = (
+    onlyId
+      ? db.prepare("SELECT * FROM installments WHERE user_id = ? AND start_ym <= ? AND id = ?").all(userId, ym, onlyId)
+      : db.prepare("SELECT * FROM installments WHERE user_id = ? AND start_ym <= ?").all(userId, ym)
+  ) as Row[];
+  for (const p of plans) {
+    const no = p.first_no + diffMonths(p.start_ym, ym);
+    if (no > p.count) continue;
+    if (db.prepare("SELECT 1 FROM entries WHERE inst_id = ? AND inst_no = ?").get(p.id, no)) continue;
+    const blockId = ensureExpenseBlock(userId, ym, p.block_name, p.block_card === 1, p.block_member_id);
+    const payWith = p.pay_with_name ? ensureExpenseBlock(userId, ym, p.pay_with_name, true, null) : null;
+    const pos = (
+      db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM entries WHERE block_id = ?").get(blockId) as Row
+    ).p as number;
+    const day = p.day ? Math.min(p.day, daysInMonth(ym)) : null;
+    db.prepare(
+      `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, position, pay_with, inst_id, inst_no, inst_count)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      uid(),
+      blockId,
+      userId,
+      p.description,
+      installmentAmount(p.total_amount, p.count, no),
+      day ? `${ym}-${String(day).padStart(2, "0")}` : null,
+      "pending",
+      pos,
+      payWith,
+      p.id,
+      no,
+      p.count,
+    );
+  }
+}
+
+/**
+ * Lança uma compra parcelada a partir de uma tabela de despesa (cartão ou comum)
+ * do mês. A parcela `currentNo` cai no mês da tabela; as seguintes, nos próximos.
+ */
+export function createInstallment(
+  userId: string,
+  input: {
+    blockId: string;
+    description: string;
+    total: number;
+    count: number;
+    currentNo: number;
+    date?: string | null;
+    payWith?: string | null;
+  },
+) {
+  const db = getDb();
+  const block = ownedBlock(userId, input.blockId);
+  if (block.kind !== "expense") throw new ApiError("Compras parceladas só entram em tabelas de despesa.");
+  assertPayWith(userId, block, input.payWith);
+  const payWithName = input.payWith
+    ? ((db.prepare("SELECT name FROM blocks WHERE id = ?").get(input.payWith) as Row).name as string)
+    : null;
+  const id = uid();
+  db.transaction(() => {
+    db.prepare(
+      `INSERT INTO installments (id, user_id, description, total_amount, count, first_no, start_ym, day, block_name, block_card, block_member_id, pay_with_name)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      id,
+      userId,
+      input.description,
+      input.total,
+      input.count,
+      input.currentNo,
+      block.ym,
+      input.date ? Number(input.date.slice(8, 10)) : null,
+      block.name,
+      block.card,
+      block.member_id ?? null,
+      payWithName,
+    );
+    // meses já iniciados recebem as parcelas agora; os outros, quando forem iniciados
+    const last = addMonths(block.ym, input.count - input.currentNo);
+    const months = db
+      .prepare("SELECT ym FROM months WHERE user_id = ? AND ym >= ? AND ym <= ? ORDER BY ym")
+      .all(userId, block.ym, last) as Row[];
+    for (const m of months) materializeInstallments(userId, m.ym, id);
+  })();
+  return { id };
+}
+
+/** Encerra o parcelamento: apaga as parcelas de `fromYm` em diante e mantém as anteriores. */
+export function deleteInstallment(userId: string, id: string, fromYm: string) {
+  const db = getDb();
+  if (!db.prepare("SELECT 1 FROM installments WHERE id = ? AND user_id = ?").get(id, userId))
+    throw new ApiError("Parcelamento não encontrado.", 404);
+  db.transaction(() => {
+    db.prepare(
+      `DELETE FROM entries WHERE inst_id = ? AND user_id = ?
+          AND block_id IN (SELECT id FROM blocks WHERE user_id = ? AND ym >= ?)`,
+    ).run(id, userId, userId, fromYm);
+    db.prepare("DELETE FROM installments WHERE id = ?").run(id);
+  })();
+}
+
+/* ------------------------------------------------------------------ */
 /* Metas do cofrinho                                                   */
 /* ------------------------------------------------------------------ */
 
@@ -740,6 +898,9 @@ export function exportAll(userId: string) {
     user: { name: user?.name, email: user?.email },
     members: listMembers(userId),
     goals: goalStats(userId).map(({ history: _h, ...g }) => g),
+    installments: (
+      db.prepare("SELECT * FROM installments WHERE user_id = ? ORDER BY created_at").all(userId) as Row[]
+    ).map(({ user_id: _u, ...r }) => r),
     months: months.map((m) => {
       const p = getMonth(userId, m.ym);
       return { ym: m.ym, blocks: p.blocks };

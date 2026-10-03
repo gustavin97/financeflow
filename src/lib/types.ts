@@ -39,6 +39,8 @@ export interface Entry {
   sign: 1 | -1;
   /** despesas: id do cartão de crédito que paga a linha. null = sai do saldo */
   payWith: string | null;
+  /** parcela de uma compra parcelada (ex.: 3 de 12). id null = parcelamento já excluído */
+  installment: { id: string | null; no: number; count: number } | null;
 }
 
 export interface Block {

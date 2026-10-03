@@ -74,6 +74,8 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 **Cofrinho e metas.** Em *Cofrinho* você cadastra as metas (valor, prazo opcional). O sistema soma tudo que foi guardado nas planilhas, mostra o progresso, o ritmo mensal (média dos últimos 3 meses) e uma previsão de quando a meta é atingida.
 
+**Compras parceladas.** Em qualquer tabela de despesa (inclusive a do cartão), *Compra parcelada* lança a compra com o valor total ou o da parcela, o número de parcelas e em qual parcela ela está neste mês (para compras feitas antes). Cada parcela vira uma linha no mês dela, com a etiqueta "3/12": os meses já abertos recebem na hora, os próximos quando forem iniciados (se a tabela não existir naquele mês, ela é criada). Os centavos que sobram da divisão vão para a 1ª parcela. Clicando na etiqueta dá para **encerrar o parcelamento**: somem a parcela do mês e as seguintes, e as anteriores ficam.
+
 **Mês novo sem recomeçar.** Ao abrir um mês vazio você escolhe: copiar o mês anterior (tabelas e lançamentos fixos, tudo volta como pendente e com as datas ajustadas), copiar só as tabelas, usar o modelo padrão ou começar em branco.
 
 **Visão anual.** Os 12 meses lado a lado, gráfico de receitas x despesas x cofrinho, saldo acumulado e a divisão por categoria.

@@ -64,6 +64,24 @@ CREATE TABLE IF NOT EXISTS members (
 );
 CREATE INDEX IF NOT EXISTS idx_members_user ON members(user_id);
 
+-- compras parceladas: cada parcela vira uma linha no mês dela (ver queries.ts)
+CREATE TABLE IF NOT EXISTS installments (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  description     TEXT NOT NULL DEFAULT '',
+  total_amount    INTEGER NOT NULL,
+  count           INTEGER NOT NULL,
+  first_no        INTEGER NOT NULL DEFAULT 1,
+  start_ym        TEXT NOT NULL,
+  day             INTEGER,
+  block_name      TEXT NOT NULL,
+  block_card      INTEGER NOT NULL DEFAULT 0,
+  block_member_id TEXT,
+  pay_with_name   TEXT,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_installments_user ON installments(user_id);
+
 -- tabelas (blocos) de cada mês: Receitas, Contas da casa, Lazer, Cofrinho, Totais...
 ${BLOCKS_TABLE("blocks")}
 
@@ -82,6 +100,9 @@ CREATE TABLE IF NOT EXISTS entries (
   ref         TEXT,
   sign        INTEGER NOT NULL DEFAULT 1,
   pay_with    TEXT REFERENCES blocks(id) ON DELETE SET NULL,
+  inst_id     TEXT REFERENCES installments(id) ON DELETE SET NULL,
+  inst_no     INTEGER,
+  inst_count  INTEGER,
   created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `;
@@ -92,9 +113,10 @@ CREATE INDEX IF NOT EXISTS idx_blocks_user_ym ON blocks(user_id, ym);
 CREATE INDEX IF NOT EXISTS idx_entries_block ON entries(block_id);
 CREATE INDEX IF NOT EXISTS idx_entries_goal ON entries(goal_id);
 CREATE INDEX IF NOT EXISTS idx_entries_pay_with ON entries(pay_with);
+CREATE INDEX IF NOT EXISTS idx_entries_inst ON entries(inst_id);
 `;
 
-/** Atualiza bancos criados antes das pessoas / tabelas de total / cartões. */
+/** Atualiza bancos criados antes das pessoas / tabelas de total / cartões / parcelas. */
 function migrate(raw: DatabaseSync) {
   const cols = (table: string) =>
     new Set((raw.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
@@ -130,6 +152,13 @@ function migrate(raw: DatabaseSync) {
   if (!blockCols.has("card_paid")) raw.exec("ALTER TABLE blocks ADD COLUMN card_paid INTEGER");
   if (!entryCols.has("pay_with"))
     raw.exec("ALTER TABLE entries ADD COLUMN pay_with TEXT REFERENCES blocks(id) ON DELETE SET NULL");
+
+  // compras parceladas
+  if (!entryCols.has("inst_id")) {
+    raw.exec("ALTER TABLE entries ADD COLUMN inst_id TEXT REFERENCES installments(id) ON DELETE SET NULL");
+    raw.exec("ALTER TABLE entries ADD COLUMN inst_no INTEGER");
+    raw.exec("ALTER TABLE entries ADD COLUMN inst_count INTEGER");
+  }
 }
 
 export type Bind = string | number | bigint | null | Uint8Array;
