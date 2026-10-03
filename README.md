@@ -40,7 +40,8 @@ Variáveis de ambiente (copie `.env.example` para `.env`):
 | `AUTH_SECRET` | Segredo que assina a sessão (JWT). Em produção use um valor longo e aleatório: `openssl rand -base64 48`. Se ficar vazio, um segredo é gerado em `data/.auth-secret`. |
 | `DATABASE_PATH` | Caminho do arquivo SQLite. Padrão: `./data/financeflow.db`. |
 | `COOKIE_SECURE` | Use `true` quando servir por HTTPS. |
-| `PUBLIC_ACCESS` | Acesso temporário sem login (`true` por padrão); use `false` para exigir autenticação novamente. |
+| `PUBLIC_ACCESS` | `true` libera o acesso sem login (entra como o primeiro usuário). Só funciona em desenvolvimento; em produção é ignorado. |
+| `ALLOW_SIGNUP` | A primeira conta sempre pode ser criada; depois o cadastro fecha. Use `true` para permitir novas contas. |
 
 O banco é um único arquivo SQLite. Para fazer backup, copie `data/financeflow.db`.
 

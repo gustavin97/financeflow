@@ -7,7 +7,7 @@ import { PasswordField } from "@/components/ui/PasswordField";
 import { api, errMsg } from "@/lib/client";
 import { AUTH_FIELD, AUTH_LABEL } from "../styles";
 
-export default function SignupPage() {
+export function SignupForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
