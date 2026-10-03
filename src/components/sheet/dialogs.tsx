@@ -153,7 +153,7 @@ export function ColumnsDialog({
         </p>
 
         {cols.length > 0 && (
-          <ul className="divide-y divide-grid border border-grid">
+          <ul className="divide-y divide-grid overflow-hidden rounded-lg border border-line">
             {cols.map((c) => (
               <li key={c.id} className="flex items-center gap-2 px-2 py-1.5">
                 <input
@@ -179,7 +179,7 @@ export function ColumnsDialog({
           </ul>
         )}
 
-        <div className="border border-dashed border-grid p-3">
+        <div className="rounded-lg border border-dashed border-grid p-3">
           <span className="label">Nova coluna</span>
           <div className="flex gap-2">
             <input

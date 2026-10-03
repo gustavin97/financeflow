@@ -26,8 +26,8 @@ export function TopNav({ user }: { user: SessionUser }) {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-grid bg-white">
-      <div className="flex h-14 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur-md">
+      <div className="flex h-16 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
         <Link href="/planilha" className="shrink-0" aria-label="Finance Flow">
           <Logo large />
         </Link>
@@ -39,13 +39,12 @@ export function TopNav({ user }: { user: SessionUser }) {
                 key={href}
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex items-center gap-1.5 px-3 text-[15px] font-medium transition-colors ${
-                  active ? "text-brand" : "text-muted hover:bg-head hover:text-ink"
+                className={`my-2.5 flex items-center gap-1.5 rounded-lg px-3 text-[15px] font-medium transition-colors ${
+                  active ? "bg-brand-soft text-brand" : "text-muted hover:bg-head hover:text-ink"
                 }`}
               >
                 <Icon size={17} />
                 <span className="hidden sm:inline">{label}</span>
-                {active && <span className="absolute inset-x-0 bottom-0 h-[3px] bg-brand" />}
               </Link>
             );
           })}
@@ -55,7 +54,7 @@ export function TopNav({ user }: { user: SessionUser }) {
           triggerClassName="btn btn-ghost h-11 gap-2 px-2"
           trigger={
             <>
-              <span className="flex h-6 w-6 items-center justify-center bg-brand-soft text-[14px] font-semibold text-brand">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#16a35a] to-brand text-[14px] font-semibold text-white">
                 {user.name.trim().charAt(0).toUpperCase()}
               </span>
               <span className="hidden max-w-[140px] truncate text-[15px] sm:inline">

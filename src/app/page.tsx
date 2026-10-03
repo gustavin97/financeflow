@@ -10,7 +10,7 @@ function SheetPreview() {
     ["Bruno", "#eb6834", "4.800,00", "1.014,60"],
   ] as const;
   return (
-    <div className="border border-grid bg-white shadow-pop" aria-hidden="true">
+    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-pop" aria-hidden="true">
       <div className="grid grid-cols-2 gap-px bg-grid">
         {[
           ["Receitas", "11.000,00", "#107c41"],
@@ -135,7 +135,7 @@ export default async function Home() {
             </h2>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
               {FEATURES.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="border border-grid bg-white px-6 py-7 shadow-sheet">
+                <div key={title} className="panel px-6 py-7">
                   <span className="flex h-11 w-11 items-center justify-center bg-brand-soft text-brand">
                     <Icon size={22} />
                   </span>
@@ -148,7 +148,7 @@ export default async function Home() {
         </section>
 
         <section className="mx-auto max-w-6xl px-5 py-16">
-          <div className="flex flex-wrap items-center justify-between gap-6 border border-grid bg-brand-soft px-7 py-8">
+          <div className="flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-line bg-brand-soft px-7 py-8">
             <div>
               <h2 className="text-[26px] font-semibold leading-tight tracking-tight">
                 O próximo mês de vocês começa em um minuto.

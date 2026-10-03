@@ -123,7 +123,7 @@ export function NewBlockDialog({
                     setPreset(null);
                   }}
                   aria-pressed={active}
-                  className={`flex items-start gap-3 border px-3 py-2 text-left transition-colors ${
+                  className={`flex items-start gap-3 rounded-lg border px-3 py-2 text-left transition-colors ${
                     active ? "border-brand bg-brand-soft" : "border-grid bg-white hover:bg-head"
                   }`}
                 >
@@ -173,7 +173,7 @@ export function NewBlockDialog({
               {models.map((m) => (
                 <label
                   key={m.v}
-                  className={`flex cursor-pointer items-start gap-2.5 border px-3 py-2 ${
+                  className={`flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 ${
                     model === m.v ? "border-brand bg-brand-soft" : "border-grid hover:bg-head"
                   }`}
                 >
@@ -374,7 +374,7 @@ export function BlockSettingsDialog({
           )}
         </div>
         {isExpense && (
-          <label className="flex cursor-pointer items-start gap-2.5 border border-grid px-3 py-2 hover:bg-head">
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-grid px-3 py-2 hover:bg-head">
             <input
               type="checkbox"
               className="mt-1 accent-[#8a4fa3]"

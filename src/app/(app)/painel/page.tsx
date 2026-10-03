@@ -99,7 +99,7 @@ export default function DashboardPage() {
       {/* ---------- filtros: uma linha acima dos gráficos ---------- */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="mr-2 text-[26px] font-semibold tracking-tight">Painel</h1>
-        <div className="flex items-center border border-grid bg-white">
+        <div className="flex items-center overflow-hidden rounded-xl border border-line bg-white shadow-sheet">
           <button
             className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink"
             onClick={() => setYm(addMonths(ym, -1))}
@@ -119,7 +119,7 @@ export default function DashboardPage() {
           </button>
         </div>
         {members.length > 0 && (
-          <div className="flex flex-wrap gap-1" role="tablist" aria-label="Ver dados de">
+          <div className="seg" role="tablist" aria-label="Ver dados de">
             {[
               { id: "all", name: "Casal", color: null as string | null },
               ...members.map((m) => ({ id: m.id, name: m.name, color: m.color })),
@@ -130,11 +130,9 @@ export default function DashboardPage() {
                 role="tab"
                 aria-selected={scope === t.id}
                 onClick={() => setWho(t.id)}
-                className={`flex h-11 items-center gap-1.5 border px-3 text-[15px] font-medium ${
-                  scope === t.id ? "border-brand bg-brand-soft text-brand" : "border-grid bg-white text-muted hover:bg-head"
-                }`}
+                className="seg-item"
               >
-                {t.color && <span className="h-2 w-2" style={{ background: t.color }} />}
+                {t.color && <span className="h-2 w-2 rounded-full" style={{ background: t.color }} />}
                 {t.name}
               </button>
             ))}
@@ -157,10 +155,10 @@ export default function DashboardPage() {
           {error}
         </p>
       )}
-      {!data && !error && <div className="h-80 border border-grid bg-white" aria-busy="true" />}
+      {!data && !error && <div className="h-80 rounded-xl border border-line bg-white" aria-busy="true" />}
 
       {data && !cur && (
-        <div className="border border-grid bg-white px-5 py-8 text-center shadow-sheet">
+        <div className="panel px-5 py-8 text-center">
           <p className="text-[16px] font-semibold">{cap(ymLabel(ym))} ainda não foi iniciado.</p>
           <p className="mt-1 text-[15px] text-muted">Abra a planilha do mês para lançar receitas e despesas.</p>
           <Link href={`/planilha/${ym}`} className="btn btn-primary mt-4">
@@ -233,7 +231,7 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="min-w-0 border border-grid bg-white p-4 shadow-sheet">
+    <section className="min-w-0 panel-open p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-[16px] font-semibold">{title}</h2>
@@ -294,11 +292,11 @@ function Kpis({ point, prev, prevYm }: { point: MonthPoint; prev: MonthPoint | n
     },
   ];
   return (
-    <div className="grid grid-cols-2 gap-px border border-grid bg-grid shadow-sheet lg:grid-cols-4">
+    <div className="grid grid-cols-2 kpis gap-3 lg:grid-cols-4">
       {tiles.map((t) => (
         <div key={t.label} className="bg-white px-4 py-3">
           <p className="text-[14.5px] font-medium text-muted">{t.label}</p>
-          <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight tracking-tight" style={{ color: t.color }}>
+          <p className="mt-0.5 text-[19px] sm:text-[27px] font-semibold leading-tight tracking-tight" style={{ color: t.color }}>
             {fmtBRL(t.v)}
           </p>
           <p className="mt-1 text-[14px] text-muted">
@@ -488,7 +486,7 @@ function Evolution({
       </svg>
       {h && hover !== null && (
         <div
-          className="pointer-events-none absolute top-2 z-10 min-w-[170px] border border-grid bg-white px-3 py-2 text-[14px] shadow-pop"
+          className="pointer-events-none absolute top-2 z-10 min-w-[170px] rounded-lg border border-line bg-white px-3 py-2 text-[14px] shadow-pop"
           style={{
             left: `${((padL + groupW * hover + groupW / 2) / W) * 100}%`,
             transform: hover > groups.length / 2 ? "translateX(-105%)" : "translateX(5%)",

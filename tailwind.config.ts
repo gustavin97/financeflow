@@ -2,20 +2,20 @@ import type { Config } from "tailwindcss";
 
 /**
  * Finance Flow - tokens visuais.
- * Estética "planilha": fundo cinza-claro de bancada, folhas brancas,
- * linhas de grade finas e cantos praticamente retos (máx. 3px).
+ * Estética "planilha": fundo cinza-claro de bancada, folhas brancas com
+ * cantos suaves e linhas de grade finas e discretas dentro das tabelas.
  */
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     borderRadius: {
       none: "0",
-      sm: "1px",
-      DEFAULT: "2px",
-      md: "2px",
-      lg: "3px",
-      xl: "3px",
-      "2xl": "3px",
+      sm: "4px",
+      DEFAULT: "6px",
+      md: "8px",
+      lg: "10px",
+      xl: "12px",
+      "2xl": "16px",
       full: "9999px",
     },
     extend: {
@@ -23,9 +23,10 @@ const config: Config = {
         ink: "#1c2024",
         muted: "#5f6b76",
         faint: "#8a949e",
-        grid: "#d3d8de",
-        head: "#f1f3f5",
-        bench: "#eceff2",
+        grid: "#e2e6eb",
+        line: "#dfe4ea",
+        head: "#f4f6f8",
+        bench: "#f1f4f7",
         brand: {
           DEFAULT: "#107c41",
           dark: "#0b5f31",
@@ -47,8 +48,9 @@ const config: Config = {
         ],
       },
       boxShadow: {
-        sheet: "0 1px 0 rgba(28,32,36,0.04), 0 1px 3px rgba(28,32,36,0.06)",
-        pop: "0 8px 24px rgba(28,32,36,0.16)",
+        sheet: "0 1px 2px rgba(16,24,40,0.04), 0 2px 6px rgba(16,24,40,0.04)",
+        lift: "0 2px 4px rgba(16,24,40,0.06), 0 10px 24px rgba(16,24,40,0.08)",
+        pop: "0 4px 8px rgba(16,24,40,0.06), 0 16px 36px rgba(16,24,40,0.14)",
       },
     },
   },

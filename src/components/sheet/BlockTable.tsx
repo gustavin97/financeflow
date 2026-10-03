@@ -130,13 +130,13 @@ export function BlockTable({
     3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + (showStatus ? 1 : 0) + (showPayWith ? 1 : 0) + extras.length;
 
   return (
-    <section
-      className="border border-grid bg-white shadow-sheet"
-      style={{ borderTop: `3px solid ${color}` }}
-      aria-label={`Tabela ${block.name}`}
-    >
+    <section className="panel-open" aria-label={`Tabela ${block.name}`}>
       {/* ---------- título (segure aqui para arrastar a tabela) ---------- */}
-      <div data-drag-handle className="flex h-12 cursor-grab items-center border-b border-grid active:cursor-grabbing">
+      <div
+        data-drag-handle
+        className="flex h-12 cursor-grab items-center rounded-t-xl border-b border-grid active:cursor-grabbing"
+        style={{ background: `linear-gradient(180deg, ${color}12, ${color}05)`, boxShadow: `inset 0 2px 0 ${color}` }}
+      >
         <span
           className="flex h-full w-7 shrink-0 touch-none items-center justify-center text-faint hover:text-muted"
           title="Arraste para mover a tabela"
@@ -161,8 +161,11 @@ export function BlockTable({
             <MemberTag member={owner} />
           </button>
         )}
-        <span className="hidden items-center gap-1.5 px-2 text-[14px] font-medium sm:flex" style={{ color }}>
-          {card ? <CreditCard size={15} /> : <span className="h-2 w-2" style={{ background: color }} />}
+        <span
+          className="mx-1 hidden items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13.5px] font-semibold sm:flex"
+          style={{ color, background: `${color}14` }}
+        >
+          {card ? <CreditCard size={14} /> : <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />}
           {card ? CARD_META.short : meta.label}
         </span>
         {block.kind !== "income" && income > 0 && (
@@ -605,7 +608,7 @@ function CardBar({
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <label className="flex items-center gap-2 text-muted">
           Limite do cartão
-          <span className="w-[130px] border border-grid bg-white">
+          <span className="w-[130px] overflow-hidden rounded-md border border-line bg-white">
             <MoneyCell
               label="Limite do cartão"
               value={card.limit ?? 0}
@@ -661,7 +664,7 @@ function CardBar({
         </span>
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-muted">Valor pago</span>
-          <span className="w-[130px] border border-grid bg-white">
+          <span className="w-[130px] overflow-hidden rounded-md border border-line bg-white">
             <MoneyCell label="Valor pago da fatura" value={paid ?? 0} onCommit={(v) => onPatch({ cardPaid: v > 0 ? v : null })} />
           </span>
           {paid === null ? (

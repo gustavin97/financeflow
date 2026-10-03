@@ -24,7 +24,7 @@ function Cell({
   return (
     <div className="bg-white px-4 py-3">
       <p className="text-[14.5px] font-medium text-muted">{label}</p>
-      <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight tracking-tight" style={{ color }}>
+      <p className="mt-0.5 text-[19px] sm:text-[27px] font-semibold leading-tight tracking-tight" style={{ color }}>
         {fmtBRL(value)}
       </p>
       <div className="mt-1 space-y-0.5">
@@ -41,7 +41,7 @@ function Cell({
 export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
   return (
     <div
-      className="grid grid-cols-2 gap-px border border-grid bg-grid shadow-sheet lg:grid-cols-5"
+      className="grid grid-cols-2 kpis gap-3 lg:grid-cols-5"
       role="group"
       aria-label="Resumo do mês"
     >
@@ -101,7 +101,7 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
   });
 
   return (
-    <div className="overflow-x-auto border border-grid bg-white shadow-sheet">
+    <div className="overflow-x-auto panel">
       <table className="sheet" style={{ minWidth: 960 }}>
         <thead>
           <tr>
@@ -121,7 +121,7 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
             <tr key={r.id}>
               <td className="!px-2">
                 <span className="flex items-center gap-2 font-medium">
-                  <span className="h-2.5 w-2.5 shrink-0" style={{ background: r.color }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: r.color }} />
                   {r.name}
                   <span className="text-[13.5px] font-normal text-muted">{fmtPct(r.ratio)} da renda</span>
                 </span>
@@ -142,7 +142,7 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
             <tr>
               <td className="!px-2">
                 <span className="flex items-center gap-2 font-medium">
-                  <span className="h-2.5 w-2.5 shrink-0" style={{ background: SHARED_COLOR }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SHARED_COLOR }} />
                   Conjunto
                 </span>
               </td>

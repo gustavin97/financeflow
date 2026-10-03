@@ -20,7 +20,7 @@ export function DistributionBar({ blocks, income }: { blocks: Block[]; income: n
 
   if (income <= 0) {
     return (
-      <div className="border border-grid bg-white px-4 py-3 text-[15px] text-muted shadow-sheet">
+      <div className="panel px-4 py-3 text-[15px] text-muted">
         Preencha a tabela de receitas para ver como sua renda se divide entre as despesas e as economias.
       </div>
     );
@@ -30,7 +30,7 @@ export function DistributionBar({ blocks, income }: { blocks: Block[]; income: n
   const free = income - out;
 
   return (
-    <div className="border border-grid bg-white px-4 py-3 shadow-sheet">
+    <div className="panel px-5 py-4">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-semibold">Para onde vai a renda do mês</h2>
         <p className="text-[14.5px]" style={{ color: free >= 0 ? "#107c41" : "#c4361f" }}>
@@ -39,13 +39,12 @@ export function DistributionBar({ blocks, income }: { blocks: Block[]; income: n
             : `Faltam ${fmtBRL(-free)}: as saídas passam da renda em ${fmtPct(-free / income, 1)}`}
         </p>
       </div>
-      <div className="flex h-[14px] w-full overflow-hidden bg-[#e3e7eb]" role="img" aria-label="Distribuição da renda">
+      <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-full bg-[#e8ecf0]" role="img" aria-label="Distribuição da renda">
         {segments.map((s) => (
           <div
             key={s.id}
             title={`${s.name}: ${fmtBRL(s.value)} (${fmtPct(s.value / income, 1)} da renda)`}
             style={{ width: `${(s.value / base) * 100}%`, background: s.color }}
-            className="border-r border-white last:border-r-0"
           />
         ))}
         {free > 0 && (
@@ -58,14 +57,14 @@ export function DistributionBar({ blocks, income }: { blocks: Block[]; income: n
       <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1">
         {segments.map((s) => (
           <li key={s.id} className="flex items-center gap-1.5 text-[14px] text-muted">
-            <span className="h-2.5 w-2.5" style={{ background: s.color }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
             {s.name}
             <span className="font-semibold text-ink">{fmtPct(s.value / income, 1)}</span>
           </li>
         ))}
         {free > 0 && (
           <li className="flex items-center gap-1.5 text-[14px] text-muted">
-            <span className="h-2.5 w-2.5" style={{ background: "#bfe3cd" }} />
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: "#bfe3cd" }} />
             Sobra
             <span className="font-semibold text-ink">{fmtPct(free / income, 1)}</span>
           </li>

@@ -23,7 +23,7 @@ function Msg({ f }: { f: Flash }) {
 
 function Panel({ title, text, children }: { title: string; text?: string; children: React.ReactNode }) {
   return (
-    <section className="border border-grid bg-white shadow-sheet">
+    <section className="panel">
       <div className="border-b border-grid bg-head px-4 py-2.5">
         <h2 className="text-[16px] font-semibold">{title}</h2>
         {text && <p className="text-[14.5px] text-muted">{text}</p>}

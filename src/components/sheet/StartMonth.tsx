@@ -71,7 +71,7 @@ export function StartMonth({
     });
 
   return (
-    <div className="mx-auto mt-8 max-w-3xl border border-grid bg-white shadow-sheet">
+    <div className="mx-auto mt-8 max-w-3xl panel">
       <div className="border-b border-grid bg-head px-5 py-3">
         <h2 className="text-[17px] font-semibold">Como quer começar {ymLabel(ym)}?</h2>
         <p className="mt-0.5 text-[15px] text-muted">Você pode mudar tudo depois, tabela por tabela.</p>

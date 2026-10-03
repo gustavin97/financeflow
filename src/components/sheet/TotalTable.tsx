@@ -39,12 +39,12 @@ export function TotalTable({
   const cyclic = calc.cyclic.has(block.id);
 
   return (
-    <section
-      className="border border-grid bg-white shadow-sheet"
-      style={{ borderTop: `3px solid ${meta.color}` }}
-      aria-label={`Tabela ${block.name}`}
-    >
-      <div data-drag-handle className="flex h-12 cursor-grab items-center border-b border-grid active:cursor-grabbing">
+    <section className="panel-open" aria-label={`Tabela ${block.name}`}>
+      <div
+        data-drag-handle
+        className="flex h-12 cursor-grab items-center rounded-t-xl border-b border-grid active:cursor-grabbing"
+        style={{ background: `linear-gradient(180deg, ${meta.color}12, ${meta.color}05)`, boxShadow: `inset 0 2px 0 ${meta.color}` }}
+      >
         <span
           className="flex h-full w-7 shrink-0 touch-none items-center justify-center text-faint hover:text-muted"
           title="Arraste para mover a tabela"
@@ -65,8 +65,11 @@ export function TotalTable({
             <MemberTag member={owner} />
           </button>
         )}
-        <span className="hidden items-center gap-1.5 px-2 text-[14px] font-medium sm:flex" style={{ color: meta.color }}>
-          <span className="h-2 w-2" style={{ background: meta.color }} />
+        <span
+          className="mx-1 hidden items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13.5px] font-semibold sm:flex"
+          style={{ color: meta.color, background: `${meta.color}14` }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.color }} />
           {meta.label}
         </span>
         <span className="whitespace-nowrap px-2 text-[16px] font-semibold" style={{ color: total < 0 ? "#c4361f" : undefined }}>

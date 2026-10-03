@@ -60,7 +60,7 @@ export default function AnnualPage() {
           <h1 className="text-[26px] font-semibold tracking-tight">Visão anual</h1>
           <p className="mt-0.5 text-[15px] text-muted">Os 12 meses lado a lado, com o saldo acumulado ao longo do ano.</p>
         </div>
-        <div className="flex items-center border border-grid bg-white">
+        <div className="flex items-center overflow-hidden rounded-xl border border-line bg-white shadow-sheet">
           <button className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink" onClick={() => setYear(year - 1)} aria-label="Ano anterior">
             <ChevronLeft size={19} />
           </button>
@@ -76,11 +76,11 @@ export default function AnnualPage() {
           {error}
         </p>
       )}
-      {!data && !error && <div className="h-72 border border-grid bg-white" aria-busy="true" />}
+      {!data && !error && <div className="h-72 rounded-xl border border-line bg-white" aria-busy="true" />}
 
       {data && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-px border border-grid bg-grid shadow-sheet lg:grid-cols-4">
+          <div className="grid grid-cols-2 kpis gap-3 lg:grid-cols-4">
             {[
               { l: "Receitas no ano", v: tot.income, c: "#107c41" },
               { l: "Despesas no ano", v: tot.expense, c: "#c4361f" },
@@ -89,14 +89,14 @@ export default function AnnualPage() {
             ].map((c) => (
               <div key={c.l} className="bg-white px-4 py-3">
                 <p className="text-[14.5px] font-medium text-muted">{c.l}</p>
-                <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight" style={{ color: c.c }}>
+                <p className="mt-0.5 text-[19px] sm:text-[27px] font-semibold leading-tight" style={{ color: c.c }}>
                   {fmtBRL(c.v)}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="border border-grid bg-white p-4 shadow-sheet">
+          <div className="panel-open p-4">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-[15px] font-semibold">Mês a mês</h2>
               <ul className="flex gap-4 text-[14px] text-muted">
@@ -115,7 +115,7 @@ export default function AnnualPage() {
             <BarChart rows={rows} />
           </div>
 
-          <div className="overflow-x-auto border border-grid bg-white shadow-sheet">
+          <div className="overflow-x-auto panel">
             <table className="sheet" style={{ minWidth: 900 }}>
               <thead>
                 <tr>
@@ -167,7 +167,7 @@ export default function AnnualPage() {
           </div>
 
           {spendCats.length > 0 && (
-            <div className="border border-grid bg-white p-4 shadow-sheet">
+            <div className="panel-open p-4">
               <h2 className="mb-3 text-[15px] font-semibold">Onde o dinheiro foi em {year}</h2>
               <ul className="space-y-2.5">
                 {spendCats.map((c, i) => (

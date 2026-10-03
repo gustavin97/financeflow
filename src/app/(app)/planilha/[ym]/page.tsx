@@ -78,7 +78,7 @@ function MonthView({ ym }: { ym: string }) {
     <>
       <div className="w-full px-4 sm:px-6 lg:px-8 pb-20 pt-5">
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="flex items-center border border-grid bg-white">
+          <div className="flex items-center overflow-hidden rounded-xl border border-line bg-white shadow-sheet">
             <Link
               href={`/planilha/${addMonths(ym, -1)}`}
               className="flex h-11 w-11 items-center justify-center text-muted hover:bg-head hover:text-ink"
@@ -86,7 +86,7 @@ function MonthView({ ym }: { ym: string }) {
             >
               <ChevronLeft size={19} />
             </Link>
-            <h1 className="min-w-[190px] border-x border-grid px-3 text-center text-[18px] font-semibold leading-[44px]">
+            <h1 className="min-w-[190px] border-x border-line px-3 text-center text-[18px] font-semibold leading-[44px]">
               {title}
             </h1>
             <Link
@@ -149,7 +149,7 @@ function MonthView({ ym }: { ym: string }) {
             <DistributionBar blocks={data.blocks} income={summary.income} />
 
             {members.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1" role="tablist" aria-label="Filtrar tabelas por pessoa">
+              <div className="seg" role="tablist" aria-label="Filtrar tabelas por pessoa">
                 {[
                   { id: "all", name: "Todas as tabelas", color: null as string | null },
                   ...members.map((x) => ({ id: x.id, name: x.name, color: x.color })),
@@ -160,11 +160,9 @@ function MonthView({ ym }: { ym: string }) {
                     role="tab"
                     aria-selected={filter === t.id}
                     onClick={() => setWho(t.id)}
-                    className={`flex h-10 items-center gap-1.5 border px-3 text-[15px] font-medium ${
-                      filter === t.id ? "border-brand bg-brand-soft text-brand" : "border-grid bg-white text-muted hover:bg-head"
-                    }`}
+                    className="seg-item"
                   >
-                    {t.color && <span className="h-2 w-2" style={{ background: t.color }} />}
+                    {t.color && <span className="h-2 w-2 rounded-full" style={{ background: t.color }} />}
                     {t.name}
                   </button>
                 ))}
@@ -231,15 +229,15 @@ function MonthView({ ym }: { ym: string }) {
 function SheetSkeleton() {
   return (
     <div className="space-y-4" aria-busy="true" aria-label="Carregando">
-      <div className="grid grid-cols-2 gap-px border border-grid bg-grid lg:grid-cols-5">
+      <div className="grid grid-cols-2 kpis gap-3 lg:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="h-[92px] bg-white" />
         ))}
       </div>
-      <div className="h-[92px] border border-grid bg-white" />
+      <div className="h-[92px] rounded-xl border border-line bg-white" />
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="h-64 border border-grid bg-white" />
-        <div className="h-64 border border-grid bg-white" />
+        <div className="h-64 rounded-xl border border-line bg-white" />
+        <div className="h-64 rounded-xl border border-line bg-white" />
       </div>
     </div>
   );

@@ -47,7 +47,7 @@ export function Dropdown({
       {open && (
         <div
           role="menu"
-          className={`absolute z-40 mt-1 min-w-[200px] border border-grid bg-white py-1 shadow-pop ${
+          className={`absolute z-40 mt-1 min-w-[210px] rounded-xl border border-line bg-white p-1 shadow-pop ${
             align === "right" ? "right-0" : "left-0"
           }`}
           onClick={() => setOpen(false)}
@@ -70,7 +70,7 @@ export function MenuItem({
   danger?: boolean;
   href?: string;
 }) {
-  const cls = `flex w-full items-center gap-2 px-3 py-2 text-left text-[15px] hover:bg-head ${
+  const cls = `flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[15px] hover:bg-head ${
     danger ? "text-expense" : "text-ink"
   }`;
   if (href)

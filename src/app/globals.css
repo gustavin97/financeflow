@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --grid: #d3d8de;
+  --grid: #e2e6eb;
   --brand: #107c41;
 }
 
@@ -15,6 +15,8 @@ body {
 body {
   @apply bg-bench font-sans text-[16px] text-ink antialiased;
   font-variant-numeric: tabular-nums;
+  background-image: radial-gradient(1200px 400px at 50% -120px, rgba(16, 124, 65, 0.06), transparent 70%);
+  background-repeat: no-repeat;
 }
 
 ::selection {
@@ -35,18 +37,36 @@ body {
 }
 
 @layer components {
+  /* ---------- superfícies ---------- */
+  /* cartão branco; corta o conteúdo nos cantos (não usar onde há menus suspensos) */
+  .panel {
+    @apply overflow-hidden rounded-xl border border-line bg-white shadow-sheet;
+  }
+  /* igual ao .panel, sem cortar: usado nas tabelas, que têm menu "⋯" */
+  .panel-open {
+    @apply rounded-xl border border-line bg-white shadow-sheet;
+  }
+  .panel-open > :last-child {
+    @apply rounded-b-xl;
+  }
+  /* faixa de indicadores: cada item vira um cartão */
+  .kpis > * {
+    @apply min-w-0 rounded-xl border border-line shadow-sheet transition-shadow hover:shadow-lift;
+    overflow-wrap: anywhere;
+  }
+
   /* ---------- botões ---------- */
   .btn {
-    @apply inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap border border-grid bg-white px-4 text-[15px] font-medium text-ink transition-colors hover:bg-head;
+    @apply inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-line bg-white px-4 text-[15px] font-medium text-ink shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition-colors hover:bg-head;
   }
   .btn-primary {
-    @apply border-brand bg-brand text-white hover:bg-brand-dark;
+    @apply border-brand bg-brand text-white shadow-[0_1px_2px_rgba(16,24,40,0.12),inset_0_1px_0_rgba(255,255,255,0.12)] hover:border-brand-dark hover:bg-brand-dark;
   }
   .btn-danger {
     @apply border-expense/40 text-expense hover:bg-red-50;
   }
   .btn-ghost {
-    @apply border-transparent bg-transparent hover:bg-head;
+    @apply border-transparent bg-transparent shadow-none hover:bg-head;
   }
   .btn-lg {
     @apply h-12 px-6 text-[16px];
@@ -57,7 +77,19 @@ body {
 
   /* ---------- formulários ---------- */
   .field {
-    @apply block h-11 w-full border border-grid bg-white px-3 text-[16px] text-ink outline-none placeholder:text-faint focus:border-brand focus:ring-1 focus:ring-brand;
+    @apply block h-11 w-full rounded-lg border border-line bg-white px-3 text-[16px] text-ink outline-none transition-shadow placeholder:text-faint focus:border-brand focus:ring-[3px] focus:ring-brand/15;
+  }
+
+  /* ---------- abas / filtros em pílula ---------- */
+  .seg {
+    @apply inline-flex flex-wrap items-center gap-1 rounded-xl border border-line bg-white p-1 shadow-sheet;
+  }
+  .seg-item {
+    @apply flex h-9 items-center gap-1.5 rounded-lg px-3 text-[15px] font-medium text-muted transition-colors hover:bg-head hover:text-ink;
+  }
+  .seg-item[aria-selected="true"],
+  .seg-item[aria-pressed="true"] {
+    @apply bg-brand-soft text-brand hover:bg-brand-soft hover:text-brand;
   }
   .label {
     @apply mb-1.5 block text-[15px] font-medium text-ink;
@@ -77,10 +109,12 @@ body {
     height: 38px;
   }
   .sheet th {
-    background: #f1f3f5;
-    color: #4a5560;
-    font-size: 14px;
+    background: #f7f9fa;
+    color: #66717c;
+    font-size: 12.5px;
     font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     padding: 0 10px;
     text-align: left;
     white-space: nowrap;
@@ -99,15 +133,18 @@ body {
   .sheet tfoot tr:last-child > * {
     border-bottom: 0;
   }
+  .sheet tbody tr {
+    transition: background-color 0.12s;
+  }
   .sheet .gutter {
-    background: #f1f3f5;
-    color: #8a949e;
+    background: #f7f9fa;
+    color: #a0a9b2;
     font-size: 13px;
     text-align: center;
     padding: 0;
   }
   .sheet tfoot td {
-    background: #f7f8f9;
+    background: #f7f9fa;
     font-weight: 600;
     padding: 0 10px;
   }
@@ -129,6 +166,7 @@ body {
   .cell:focus {
     background: #fff;
     box-shadow: inset 0 0 0 2px var(--brand);
+    border-radius: 3px;
     outline: none;
   }
   select.cell {

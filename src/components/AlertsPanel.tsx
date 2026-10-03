@@ -22,13 +22,12 @@ export function AlertsPanel({ alerts, max = 3 }: { alerts: FinAlert[]; max?: num
   };
 
   return (
-    <section
-      className="border border-grid bg-white shadow-sheet"
-      style={{ borderLeft: `4px solid ${STYLE[worst].color}` }}
-      aria-label="Sinalizadores do mês"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-grid px-3 py-2">
-        <h2 className="text-[15px] font-semibold">Sinalizadores do mês</h2>
+    <section className="panel" aria-label="Sinalizadores do mês">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-grid px-4 py-2.5">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold">
+          <span className="h-2 w-2 rounded-full" style={{ background: STYLE[worst].color, boxShadow: `0 0 0 4px ${STYLE[worst].bg}` }} />
+          Sinalizadores do mês
+        </h2>
         <p className="text-[14px] text-muted">
           {counts.danger > 0 && (
             <span className="font-semibold" style={{ color: STYLE.danger.color }}>
@@ -48,7 +47,7 @@ export function AlertsPanel({ alerts, max = 3 }: { alerts: FinAlert[]; max?: num
           const st = STYLE[a.level];
           const Icon = st.icon;
           return (
-            <li key={a.id} className="flex items-start gap-2.5 px-3 py-2" style={{ background: st.bg }}>
+            <li key={a.id} className="flex items-start gap-3 px-4 py-2.5" style={{ background: st.bg }}>
               <Icon size={18} className="mt-0.5 shrink-0" style={{ color: st.color }} aria-label={st.label} />
               <div className="min-w-0">
                 <p className="text-[15px] font-semibold" style={{ color: st.color }}>
@@ -62,7 +61,7 @@ export function AlertsPanel({ alerts, max = 3 }: { alerts: FinAlert[]; max?: num
       </ul>
       {alerts.length > max && (
         <button
-          className="w-full border-t border-grid px-3 py-1.5 text-left text-[14.5px] font-medium text-brand hover:bg-brand-soft"
+          className="w-full border-t border-grid px-4 py-2 text-left text-[14.5px] font-medium text-brand hover:bg-brand-soft"
           onClick={() => setOpen(!open)}
         >
           {open ? "Mostrar menos" : `Ver mais ${alerts.length - max}`}

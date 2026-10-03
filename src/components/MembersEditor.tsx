@@ -54,7 +54,7 @@ export function MembersEditor({
   return (
     <div className="space-y-3">
       {members.length > 0 && (
-        <ul className="divide-y divide-grid border border-grid">
+        <ul className="divide-y divide-grid overflow-hidden rounded-lg border border-line">
           {members.map((m) => (
             <li key={m.id} className="flex items-center gap-2 px-2 py-1.5">
               <div className="flex gap-1" role="radiogroup" aria-label={`Cor de ${m.name}`}>
@@ -140,7 +140,7 @@ export function MembersDialog({
 export function MemberTag({ member }: { member: Member | null }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[14px] font-medium text-muted">
-      <span className="h-2 w-2" style={{ background: member?.color ?? "#6b7280" }} />
+      <span className="h-2 w-2 rounded-full" style={{ background: member?.color ?? "#6b7280" }} />
       {member?.name ?? "Conjunto"}
     </span>
   );

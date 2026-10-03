@@ -86,10 +86,10 @@ export default function GoalsPage() {
         </p>
       )}
 
-      {goals === null && !error && <div className="h-40 border border-grid bg-white" aria-busy="true" />}
+      {goals === null && !error && <div className="h-40 rounded-xl border border-line bg-white" aria-busy="true" />}
 
       {goals && goals.length === 0 && (
-        <div className="border border-grid bg-white px-6 py-12 text-center shadow-sheet">
+        <div className="panel px-6 py-12 text-center">
           <PiggyBank className="mx-auto text-brand" size={30} />
           <h2 className="mt-3 text-[18px] font-semibold">Qual é a sua primeira meta?</h2>
           <p className="mx-auto mt-1 max-w-md text-[15px] text-muted">
@@ -104,7 +104,7 @@ export default function GoalsPage() {
 
       {goals && goals.length > 0 && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-px border border-grid bg-grid shadow-sheet lg:grid-cols-4">
+          <div className="grid grid-cols-2 kpis gap-3 lg:grid-cols-4">
             {[
               { l: "Guardado até agora", v: fmtBRL(totals.saved), c: "#1d5fbf" },
               { l: "Previsto nas planilhas", v: fmtBRL(totals.planned), c: "#1c2024" },
@@ -117,14 +117,14 @@ export default function GoalsPage() {
             ].map((c) => (
               <div key={c.l} className="bg-white px-4 py-3">
                 <p className="text-[14.5px] font-medium text-muted">{c.l}</p>
-                <p className="mt-0.5 text-[21px] sm:text-[27px] font-semibold leading-tight" style={{ color: c.c }}>
+                <p className="mt-0.5 text-[19px] sm:text-[27px] font-semibold leading-tight" style={{ color: c.c }}>
                   {c.v}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="overflow-x-auto border border-grid bg-white shadow-sheet">
+          <div className="overflow-x-auto panel">
             <table className="sheet" style={{ minWidth: 980 }}>
               <colgroup>
                 <col style={{ width: 36 }} />
