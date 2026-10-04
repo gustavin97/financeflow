@@ -10,3 +10,4 @@ data/.auth-secret
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+.next-prod

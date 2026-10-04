@@ -2,9 +2,13 @@ import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 
+// o caminho padrão não pode ser previsível no build: senão o pacote de produção
+// (output "standalone") leva junto uma cópia do banco local
+const root = () => process.env.APP_ROOT || process.cwd();
+
 export const DB_PATH = process.env.DATABASE_PATH
   ? path.resolve(process.env.DATABASE_PATH)
-  : path.join(process.cwd(), "data", "financeflow.db");
+  : path.resolve(root(), "data", "financeflow.db");
 
 const BLOCKS_TABLE = (name: string) => `
 CREATE TABLE IF NOT EXISTS ${name} (
