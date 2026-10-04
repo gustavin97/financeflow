@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS ${name} (
   source       TEXT,
   card         INTEGER NOT NULL DEFAULT 0,
   card_paid    INTEGER,
+  card_close   INTEGER,
+  card_due     INTEGER,
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );`;
 
@@ -119,6 +121,25 @@ CREATE TABLE IF NOT EXISTS import_seen (
   PRIMARY KEY (user_id, key)
 );
 
+-- compras de cartão movidas para a fatura de um mês que ainda não foi iniciado:
+-- viram linha quando o mês for iniciado (como as parcelas)
+CREATE TABLE IF NOT EXISTS deferred_entries (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ym              TEXT NOT NULL,
+  description     TEXT NOT NULL DEFAULT '',
+  amount          INTEGER NOT NULL DEFAULT 0,
+  date            TEXT,
+  status          TEXT NOT NULL DEFAULT 'pending',
+  extra           TEXT NOT NULL DEFAULT '{}',
+  block_name      TEXT NOT NULL,
+  block_card      INTEGER NOT NULL DEFAULT 0,
+  block_member_id TEXT,
+  pay_with_name   TEXT,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_deferred_user_ym ON deferred_entries(user_id, ym);
+
 -- alertas já enviados por e-mail (para não repetir o mesmo aviso todo dia)
 CREATE TABLE IF NOT EXISTS alert_sent (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -195,6 +216,10 @@ function migrate(raw: Pick<DatabaseSync, "exec" | "prepare">) {
   const blockCols = cols("blocks");
   if (!blockCols.has("card")) raw.exec("ALTER TABLE blocks ADD COLUMN card INTEGER NOT NULL DEFAULT 0");
   if (!blockCols.has("card_paid")) raw.exec("ALTER TABLE blocks ADD COLUMN card_paid INTEGER");
+  if (!blockCols.has("card_close")) {
+    raw.exec("ALTER TABLE blocks ADD COLUMN card_close INTEGER");
+    raw.exec("ALTER TABLE blocks ADD COLUMN card_due INTEGER");
+  }
   if (!entryCols.has("pay_with"))
     raw.exec("ALTER TABLE entries ADD COLUMN pay_with TEXT REFERENCES blocks(id) ON DELETE SET NULL");
 

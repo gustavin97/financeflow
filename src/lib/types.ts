@@ -61,6 +61,9 @@ export interface Block {
   card: boolean;
   /** cartão: valor pago da fatura (centavos). null = ainda não paga */
   cardPaid: number | null;
+  /** cartão: dia do fechamento e do vencimento da fatura (null = não informado) */
+  cardClose: number | null;
+  cardDue: number | null;
   entries: Entry[];
 }
 

@@ -3,7 +3,8 @@
  * Tudo é calculado a partir dos lançamentos; nada fica salvo.
  */
 import { refLabel, type MonthCalc } from "./calc";
-import { currentYm, todayIso } from "./dates";
+import { faturaDates, hasCycle } from "./card";
+import { addMonths as addMonthsYm, currentYm, todayIso } from "./dates";
 import { fmtBRL, fmtPct } from "./money";
 import { blockTotals, budgetLimit, cardIds, onCard } from "./summary";
 import type { Block, Carry, Member } from "./types";
@@ -128,6 +129,42 @@ export function monthAlerts(input: {
       });
   }
   const cards = cardIds(blocks);
+
+  /* ---------- fechamento e vencimento das faturas (só no mês atual) ---------- */
+  if (isCurrent) {
+    for (const [id, c] of calc.cards) {
+      const b = blocks.find((x) => x.id === id)!;
+      if (!hasCycle(b)) continue;
+      const f = faturaDates(ym, b.cardClose!, b.cardDue!);
+      const unpaid = c.paid === null && c.bill > 0;
+      if (unpaid && f.due < today)
+        out.push({
+          id: `card-due-${id}`,
+          level: "danger",
+          title: `Fatura de “${b.name}” venceu dia ${dayOf(f.due)} (${fmtBRL(c.bill)})`,
+          detail: "Se já pagou, marque a fatura como paga na tabela do cartão.",
+        });
+      else if (unpaid && f.due <= addDays(today, 3))
+        out.push({
+          id: `card-due-${id}`,
+          level: "warning",
+          title:
+            f.due === today
+              ? `Fatura de “${b.name}” vence hoje (${fmtBRL(c.bill)})`
+              : `Fatura de “${b.name}” vence dia ${dayOf(f.due)} (${fmtBRL(c.bill)})`,
+        });
+      // o fechamento da próxima fatura (a deste mês pode já ter fechado no mês anterior)
+      const next = faturaDates(addMonthsYm(ym, 1), b.cardClose!, b.cardDue!);
+      const closing = [f.close, next.close].find((d) => d >= today);
+      if (closing && closing <= addDays(today, 2))
+        out.push({
+          id: `card-close-${id}`,
+          level: "warning",
+          title: `Fatura de “${b.name}” fecha ${closing === today ? "hoje" : `dia ${dayOf(closing)}`}`,
+          detail: "Compras depois do fechamento entram na fatura seguinte.",
+        });
+    }
+  }
 
   /* ---------- limites das tabelas ---------- */
   for (const b of blocks) {

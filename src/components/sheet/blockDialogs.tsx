@@ -319,11 +319,20 @@ export function BlockSettingsDialog({
   blocks: Block[];
   members: Member[];
   onClose: () => void;
-  onSave: (p: { memberId: string | null; source?: string | null; card?: boolean }) => void;
+  onSave: (p: {
+    memberId: string | null;
+    source?: string | null;
+    card?: boolean;
+    cardClose?: number | null;
+    cardDue?: number | null;
+  }) => void;
 }) {
   const [memberId, setMemberId] = useState(block.memberId);
   const [source, setSource] = useState(block.source);
   const [card, setCard] = useState(block.card);
+  const [closeText, setCloseText] = useState(block.cardClose ? String(block.cardClose) : "");
+  const [dueText, setDueText] = useState(block.cardDue ? String(block.cardDue) : "");
+  const [error, setError] = useState<string | null>(null);
   const isExpense = block.kind === "expense";
   const charged = isExpense
     ? blocks.reduce((n, b) => n + b.entries.filter((e) => e.payWith === block.id).length, 0)
@@ -338,6 +347,15 @@ export function BlockSettingsDialog({
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
+          const day = (t: string) => (t.trim() === "" ? null : Number(t));
+          const cardClose = card ? day(closeText) : null;
+          const cardDue = card ? day(dueText) : null;
+          if ([cardClose, cardDue].some((d) => d !== null && (!Number.isInteger(d) || d < 1 || d > 31)))
+            return setError("Os dias precisam estar entre 1 e 31.");
+          if ((cardClose === null) !== (cardDue === null))
+            return setError("Informe os dois dias (fechamento e vencimento) ou deixe os dois em branco.");
+          if (cardClose !== null && cardClose === cardDue)
+            return setError("O fechamento e o vencimento não podem ser no mesmo dia.");
           if (block.card && !card && charged > 0) {
             const ok = window.confirm(
               `${charged} despesa(s) estão sendo pagas com este cartão e vão voltar a sair do saldo. Continuar?`,
@@ -348,6 +366,7 @@ export function BlockSettingsDialog({
             memberId,
             ...(hasSource ? { source } : {}),
             ...(isExpense && card !== block.card ? { card } : {}),
+            ...(card && (cardClose !== block.cardClose || cardDue !== block.cardDue) ? { cardClose, cardDue } : {}),
           });
           onClose();
         }}
@@ -387,6 +406,38 @@ export function BlockSettingsDialog({
             </span>
           </label>
         )}
+        {isExpense && card && (
+          <div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: "set-close", label: "Dia do fechamento", value: closeText, set: setCloseText, ph: "Ex.: 3" },
+                { id: "set-due", label: "Dia do vencimento", value: dueText, set: setDueText, ph: "Ex.: 10" },
+              ].map((f) => (
+                <div key={f.id}>
+                  <label className="label" htmlFor={f.id}>
+                    {f.label}
+                  </label>
+                  <input
+                    id={f.id}
+                    className="field"
+                    inputMode="numeric"
+                    placeholder={f.ph}
+                    value={f.value}
+                    onChange={(e) => {
+                      f.set(e.target.value.replace(/\D/g, "").slice(0, 2));
+                      setError(null);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="mt-1 text-[14px] text-muted">
+              Esta tabela vira a fatura que vence no mês. Compras depois do fechamento são marcadas para ir à fatura
+              seguinte. Os dias valem também para os próximos meses.
+            </p>
+          </div>
+        )}
+        {error && <p className="text-[15px] text-expense">{error}</p>}
         {hasSource && (
           <div>
             <label className="label" htmlFor="set-source">

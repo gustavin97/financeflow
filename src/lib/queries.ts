@@ -10,6 +10,7 @@ import { GOAL_COLORS, MEMBER_COLORS } from "./kinds";
 import { remapRef } from "./calc";
 import { addMonths, currentYmIn, daysInMonth, diffMonths, monthRange, MONTHS_LONG, shiftDateToMonth } from "./dates";
 import { computeSummary } from "./summary";
+import { faturaYm, hasCycle } from "./card";
 import { cleanPattern } from "./statement";
 import type {
   AnnualPayload,
@@ -60,6 +61,8 @@ function mapBlock(r: Row): Omit<Block, "entries"> {
     source: r.source ?? null,
     card: r.card === 1,
     cardPaid: r.card_paid ?? null,
+    cardClose: r.card_close ?? null,
+    cardDue: r.card_due ?? null,
   };
 }
 
@@ -261,13 +264,16 @@ function insertBlock(
     memberId?: string | null;
     source?: string | null;
     card?: boolean;
+    cardClose?: number | null;
+    cardDue?: number | null;
   },
 ): string {
   const id = uid();
+  const isCard = b.kind === "expense" && !!b.card;
   getDb()
     .prepare(
-      `INSERT INTO blocks (id, user_id, ym, name, kind, budget_type, budget_value, columns, position, member_id, source, card)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO blocks (id, user_id, ym, name, kind, budget_type, budget_value, columns, position, member_id, source, card, card_close, card_due)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     )
     .run(
       id,
@@ -281,7 +287,9 @@ function insertBlock(
       b.position,
       b.memberId ?? null,
       b.source ?? null,
-      b.kind === "expense" && b.card ? 1 : 0,
+      isCard ? 1 : 0,
+      isCard ? (b.cardClose ?? null) : null,
+      isCard ? (b.cardDue ?? null) : null,
     );
   return id;
 }
@@ -314,6 +322,12 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
         `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, extra, position, ref, sign, pay_with)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       );
+      // compras de cartão com fechamento: a fatura de outubro tem compras de setembro, então
+      // a data anda o mesmo número de meses em vez de cair dentro do mês novo
+      const cycleCards = new Set(blocks.filter((b) => hasCycle(mapBlock(b))).map((b) => b.id as string));
+      const gap = diffMonths(prev.ym, ym);
+      const newDate = (date: string | null, cardish: boolean) =>
+        cardish && date ? shiftDateToMonth(date, addMonths(date.slice(0, 7), gap)) : shiftDateToMonth(date, ym);
       // 1º cria as tabelas, 2º as linhas: assim dá para trocar os ids das referências
       const ids = new Map<string, string>();
       for (const br of blocks) ids.set(br.id, insertBlock(userId, ym, mapBlock(br)));
@@ -342,7 +356,7 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
               userId,
               e.description,
               e.amount,
-              shiftDateToMonth(e.date, ym),
+              newDate(e.date, cycleCards.has(br.id) || (!!e.payWith && cycleCards.has(e.payWith))),
               "pending",
               e.goalId,
               JSON.stringify(extra),
@@ -357,6 +371,7 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
     }
     db.prepare("INSERT INTO months (user_id, ym) VALUES (?,?)").run(userId, ym);
     materializeInstallments(userId, ym);
+    materializeDeferred(userId, ym);
   });
   run();
 }
@@ -652,12 +667,21 @@ export function updateBlock(
     source?: string | null;
     card?: boolean;
     cardPaid?: number | null;
+    cardClose?: number | null;
+    cardDue?: number | null;
   },
 ) {
   const db = getDb();
   const current = ownedBlock(userId, id);
   if ((patch.card || patch.cardPaid != null) && current.kind !== "expense")
     throw new ApiError("Só tabelas de despesa podem ser cartão de crédito.");
+  const cycle = patch.cardClose !== undefined || patch.cardDue !== undefined;
+  if (cycle) {
+    if (!(patch.card ?? current.card === 1)) throw new ApiError("Fechamento e vencimento são de cartões de crédito.");
+    const close = patch.cardClose !== undefined ? patch.cardClose : current.card_close;
+    const due = patch.cardDue !== undefined ? patch.cardDue : current.card_due;
+    if (close && due && close === due) throw new ApiError("O fechamento e o vencimento não podem ser no mesmo dia.");
+  }
   assertMember(userId, patch.memberId);
   db.transaction(() => {
     if (patch.memberId !== undefined) db.prepare("UPDATE blocks SET member_id = ? WHERE id = ?").run(patch.memberId, id);
@@ -675,6 +699,21 @@ export function updateBlock(
       }
     }
     if (patch.cardPaid !== undefined) db.prepare("UPDATE blocks SET card_paid = ? WHERE id = ?").run(patch.cardPaid, id);
+    if (cycle) {
+      // o cartão é o mesmo nos meses seguintes: eles acompanham a mudança
+      const sets = [
+        ...(patch.cardClose !== undefined ? ["card_close = ?"] : []),
+        ...(patch.cardDue !== undefined ? ["card_due = ?"] : []),
+      ];
+      const vals = [
+        ...(patch.cardClose !== undefined ? [patch.cardClose] : []),
+        ...(patch.cardDue !== undefined ? [patch.cardDue] : []),
+      ];
+      db.prepare(
+        `UPDATE blocks SET ${sets.join(", ")}
+          WHERE user_id = ? AND card = 1 AND (id = ? OR (ym > ? AND lower(name) = lower(?) AND member_id IS ?))`,
+      ).run(...vals, userId, id, current.ym, current.name, current.member_id ?? null);
+    }
     if (patch.budgetType !== undefined)
       db.prepare("UPDATE blocks SET budget_type = ?, budget_value = ? WHERE id = ?").run(
         patch.budgetType,
@@ -862,16 +901,117 @@ function ensureExpenseBlock(
   const pos = (
     db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM blocks WHERE user_id = ? AND ym = ?").get(userId, ym) as Row
   ).p as number;
+  // cartão novo no mês: herda limite, fechamento e vencimento da última vez que existiu
+  const last = card
+    ? (db
+        .prepare(
+          `SELECT budget_type, budget_value, card_close, card_due FROM blocks
+            WHERE user_id = ? AND card = 1 AND lower(name) = lower(?) ORDER BY ym DESC LIMIT 1`,
+        )
+        .get(userId, name) as Row | undefined)
+    : undefined;
   return insertBlock(userId, ym, {
     name,
     kind: "expense",
-    budgetType: "none",
-    budgetValue: 0,
+    budgetType: last?.budget_type ?? "none",
+    budgetValue: last?.budget_value ?? 0,
     columns: [],
     position: pos,
     memberId: memberId ?? null,
     card,
+    cardClose: last?.card_close ?? null,
+    cardDue: last?.card_due ?? null,
   });
+}
+
+/** Linhas de cartão guardadas para `ym` (movidas para uma fatura de mês ainda não iniciado). */
+function materializeDeferred(userId: string, ym: string) {
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM deferred_entries WHERE user_id = ? AND ym = ? ORDER BY created_at").all(userId, ym) as Row[];
+  for (const d of rows) {
+    const blockId = ensureExpenseBlock(userId, ym, d.block_name, d.block_card === 1, d.block_member_id);
+    const payWith = d.pay_with_name ? ensureExpenseBlock(userId, ym, d.pay_with_name, true, undefined) : null;
+    const pos = (
+      db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM entries WHERE block_id = ?").get(blockId) as Row
+    ).p as number;
+    db.prepare(
+      `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, extra, position, pay_with)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    ).run(uid(), blockId, userId, d.description, d.amount, d.date, d.status, d.extra, pos, payWith);
+    db.prepare("DELETE FROM deferred_entries WHERE id = ?").run(d.id);
+  }
+}
+
+/**
+ * Compras do cartão `cardId` que, pela data, são de outra fatura: vão para o
+ * cartão (ou a tabela, se paga com o cartão) do mês certo. Se esse mês ainda
+ * não foi iniciado, ficam guardadas e entram quando ele for. Parcelas ficam.
+ * `entryIds` limita a algumas linhas; sem ele, move todas as que estão fora.
+ */
+export function moveToFatura(userId: string, cardId: string, entryIds?: string[]) {
+  const db = getDb();
+  const cardRow = ownedBlock(userId, cardId);
+  const card = mapBlock(cardRow);
+  if (!hasCycle(card)) throw new ApiError("Informe o fechamento e o vencimento do cartão primeiro.");
+  const rows = db
+    .prepare(
+      `SELECT e.*, b.name AS b_name, b.card AS b_card, b.member_id AS b_member, b.columns AS b_columns
+         FROM entries e JOIN blocks b ON b.id = e.block_id
+        WHERE e.user_id = ? AND b.ym = ? AND e.inst_no IS NULL AND e.date IS NOT NULL
+          AND (e.block_id = ? OR e.pay_with = ?)`,
+    )
+    .all(userId, card.ym, cardId, cardId) as Row[];
+  const only = entryIds ? new Set(entryIds) : null;
+  const moved: { id: string; ym: string; started: boolean }[] = [];
+  db.transaction(() => {
+    for (const r of rows) {
+      if (only && !only.has(r.id)) continue;
+      const target = faturaYm(r.date, card.cardClose!, card.cardDue!);
+      if (target === card.ym) continue;
+      const onCard = r.block_id === cardId;
+      const started = !!db.prepare("SELECT 1 FROM months WHERE user_id = ? AND ym = ?").get(userId, target);
+      if (started) {
+        const blockId = onCard
+          ? ensureExpenseBlock(userId, target, card.name, true, card.memberId)
+          : ensureExpenseBlock(userId, target, r.b_name, false, r.b_member ?? null);
+        const payWith = onCard ? null : ensureExpenseBlock(userId, target, card.name, true, undefined);
+        const pos = (
+          db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM entries WHERE block_id = ?").get(blockId) as Row
+        ).p as number;
+        db.prepare("UPDATE entries SET block_id = ?, pay_with = ?, position = ? WHERE id = ?").run(blockId, payWith, pos, r.id);
+      } else {
+        db.prepare(
+          `INSERT INTO deferred_entries (id, user_id, ym, description, amount, date, status, extra, block_name, block_card, block_member_id, pay_with_name)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        ).run(
+          uid(),
+          userId,
+          target,
+          r.description,
+          r.amount,
+          r.date,
+          r.status,
+          r.extra,
+          onCard ? card.name : r.b_name,
+          onCard ? 1 : 0,
+          onCard ? card.memberId : (r.b_member ?? null),
+          onCard ? null : card.name,
+        );
+        db.prepare("DELETE FROM entries WHERE id = ?").run(r.id);
+      }
+      moved.push({ id: r.id, ym: target, started });
+    }
+  })();
+  return { moved };
+}
+
+/** Compras guardadas para faturas de meses ainda não iniciados. */
+export function listDeferred(userId: string) {
+  return (
+    getDb()
+      .prepare("SELECT id, ym, description, amount, date, block_name FROM deferred_entries WHERE user_id = ? ORDER BY ym, date")
+      .all(userId) as Row[]
+  ).map((r) => ({ id: r.id, ym: r.ym, description: r.description, amount: r.amount, date: r.date, blockName: r.block_name }));
 }
 
 /** Cria as parcelas que caem em `ym` e ainda não existem (só de `onlyId`, se informado). */
@@ -1269,6 +1409,7 @@ export function exportAll(userId: string) {
       db.prepare("SELECT * FROM installments WHERE user_id = ? ORDER BY created_at").all(userId) as Row[]
     ).map(({ user_id: _u, ...r }) => r),
     importRules: listImportRules(userId),
+    deferredEntries: listDeferred(userId),
     months: months.map((m) => {
       const p = getMonth(userId, m.ym);
       return { ym: m.ym, blocks: p.blocks };

@@ -91,7 +91,11 @@ export const blockPatchSchema = z.object({
   source: ref.optional(),
   card: z.boolean().optional(),
   cardPaid: cents.min(0).nullable().optional(),
+  cardClose: z.number().int().min(1, "Dia entre 1 e 31.").max(31, "Dia entre 1 e 31.").nullable().optional(),
+  cardDue: z.number().int().min(1, "Dia entre 1 e 31.").max(31, "Dia entre 1 e 31.").nullable().optional(),
 });
+
+export const faturaMoveSchema = z.object({ entryIds: z.array(z.string().min(1).max(64)).max(500).optional() });
 
 export const reorderSchema = z.object({
   ym: ymSchema,

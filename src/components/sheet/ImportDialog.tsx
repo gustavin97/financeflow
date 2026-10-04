@@ -3,6 +3,7 @@
 import { FileUp, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api, errMsg } from "@/lib/client";
+import { faturaYm, hasCycle } from "@/lib/card";
 import { ymLabel } from "@/lib/dates";
 import { KIND_META } from "@/lib/kinds";
 import { fmtBRL } from "@/lib/money";
@@ -122,21 +123,30 @@ export function ImportDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keysSig, ym]);
 
+  const payCard = cards.find((c) => c.id === payWith);
+  const cycleCard = payCard && hasCycle(payCard) ? payCard : null;
+
   const lines = useMemo(
     () =>
       rows.map((r) => {
         const rule = preview ? matchRule(r.description, preview.rules) : null;
         const seen = !!preview?.seen.has(r.key);
-        const inMonth = r.date.startsWith(ym);
-        // fatura do cartão traz compras do mês anterior; extrato da conta, só o mês aberto
+        // extrato da conta: só o mês aberto. Fatura: com fechamento informado, só o período
+        // desta fatura; sem ele, tudo (a fatura traz compras do mês anterior)
+        const inMonth = cycleCard
+          ? faturaYm(r.date, cycleCard.cardClose!, cycleCard.cardDue!) === ym
+          : r.date.startsWith(ym);
         const auto =
-          seen || (!payWith && !inMonth) ? NONE : (rule?.blockId ?? (r.amount < 0 ? fallbackOut : fallbackIn));
+          seen || (!inMonth && (!payWith || cycleCard))
+            ? NONE
+            : (rule?.blockId ?? (r.amount < 0 ? fallbackOut : fallbackIn));
         const manual = r.key in chosen;
         const target = manual ? chosen[r.key] : auto;
         const learn = remember && manual && target !== NONE && target !== rule?.blockId ? ruleKey(r.description) : null;
-        return { r, rule, seen, inMonth, target, manual, learn };
+        const otherLabel = cycleCard ? "outra fatura" : "outro mês";
+        return { r, rule, seen, inMonth, otherLabel, target, manual, learn };
       }),
-    [rows, preview, payWith, fallbackOut, fallbackIn, chosen, remember, ym],
+    [rows, preview, payWith, cycleCard, fallbackOut, fallbackIn, chosen, remember, ym],
   );
 
   /** escolher a tabela de uma linha leva junto as parecidas que ainda não foram mexidas */
@@ -387,13 +397,22 @@ export function ImportDialog({
 function Tags({
   line,
 }: {
-  line: { rule: { pattern: string } | null; seen: boolean; inMonth: boolean; manual: boolean; learn: string | null };
+  line: {
+    rule: { pattern: string } | null;
+    seen: boolean;
+    inMonth: boolean;
+    otherLabel: string;
+    manual: boolean;
+    learn: string | null;
+  };
 }) {
   const tag = "mr-1.5 inline-flex items-center gap-1 rounded px-1.5 text-[12.5px] leading-[18px]";
   return (
     <div className="-mt-0.5 mb-1 min-h-0 empty:hidden">
       {line.seen && <span className={`${tag} bg-amber-100 text-amber-900`}>já importado</span>}
-      {!line.inMonth && <span className={`${tag} bg-head text-muted`}>outro mês</span>}
+      {!line.inMonth && (
+        <span className={`${tag} bg-head text-muted`}>{line.otherLabel}</span>
+      )}
       {line.learn ? (
         <span className={`${tag} bg-brand-soft text-brand`} title="Vira uma regra ao importar">
           <Sparkles size={11} /> lembrar “{line.learn}”

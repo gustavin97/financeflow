@@ -5,7 +5,10 @@ import { api, errMsg } from "@/lib/client";
 import type { Block, Entry, ExtraColumn, Kind, Member, MonthPayload, Status } from "@/lib/types";
 
 export type BlockPatch = Partial<
-  Pick<Block, "name" | "budgetType" | "budgetValue" | "columns" | "memberId" | "source" | "card" | "cardPaid">
+  Pick<
+    Block,
+    "name" | "budgetType" | "budgetValue" | "columns" | "memberId" | "source" | "card" | "cardPaid" | "cardClose" | "cardDue"
+  >
 >;
 export type EntryPatch = Partial<
   Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "extra" | "ref" | "sign" | "payWith">
@@ -193,6 +196,20 @@ export function useMonth(ym: string) {
     api(`/api/installments/${installmentId}`, { method: "DELETE", body: { fromYm: ym } }).catch(fail);
   };
 
+  /* ---------- compras do cartão que são de outra fatura (vão para outro mês: recarrega) ---------- */
+  const moveFatura = async (cardId: string, entryIds?: string[]) => {
+    try {
+      const r = await api<{ moved: { id: string; ym: string; started: boolean }[] }>(`/api/blocks/${cardId}/fatura`, {
+        body: { entryIds },
+      });
+      await load();
+      return r.moved;
+    } catch (e) {
+      setError(errMsg(e));
+      return [];
+    }
+  };
+
   /* ---------- importação de extrato (muitas linhas em várias tabelas: recarrega o mês) ---------- */
   const importStatement = async (input: NewImport) => {
     const r = await api<{ imported: number; learned: number }>("/api/import", { body: { ym, ...input } });
@@ -244,5 +261,6 @@ export function useMonth(ym: string) {
     removeInstallment,
     importStatement,
     surplus,
+    moveFatura,
   };
 }

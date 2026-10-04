@@ -13,8 +13,9 @@ import { APP_TIMEZONE, getMonth } from "./queries";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Row = Record<string, any>;
 
-// contas vencidas/vencendo e falta de caixa voltam a avisar a cada dia
+// contas e faturas vencidas/vencendo e falta de caixa voltam a avisar a cada dia
 const DAILY = new Set(["overdue", "due-soon", "cash"]);
+const daily = (id: string) => DAILY.has(id) || id.startsWith("card-due-");
 
 /** Alertas (perigo e atenção) do mês atual, cada um com a sua "impressão digital". */
 export function currentAlerts(userId: string) {
@@ -25,7 +26,7 @@ export function currentAlerts(userId: string) {
   const calc = buildCalc(m.blocks, m.members, m.carry);
   const alerts = monthAlerts({ ym, blocks: m.blocks, members: m.members, carry: m.carry, calc, today })
     .filter((a) => a.level !== "ok")
-    .map((a) => ({ ...a, fp: [ym, a.id, a.title, DAILY.has(a.id) ? today : ""].join("|").slice(0, 400) }));
+    .map((a) => ({ ...a, fp: [ym, a.id, a.title, daily(a.id) ? today : ""].join("|").slice(0, 400) }));
   return { ym, alerts };
 }
 

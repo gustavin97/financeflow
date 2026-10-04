@@ -4,7 +4,8 @@ import { CalendarRange, Check, CreditCard, GripVertical, MoreHorizontal, Plus, X
 import { useEffect, useRef, useState } from "react";
 import { CARD_META, KIND_META } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct, fmtPlain } from "@/lib/money";
-import { monthRange, todayIso } from "@/lib/dates";
+import { MONTHS_LONG, monthRange, todayIso } from "@/lib/dates";
+import { faturaDates, faturaYm, hasCycle } from "@/lib/card";
 import { refLabel, type MonthCalc, type Running } from "@/lib/calc";
 import { blockTotals, budgetLimit, type CardInfo } from "@/lib/summary";
 import type { Block, Entry, ExtraColumn, GoalLite, Member } from "@/lib/types";
@@ -25,11 +26,33 @@ type Actions = Pick<
   | "removeEntry"
   | "addInstallment"
   | "removeInstallment"
+  | "moveFatura"
 >;
 
 const DONE_PLURAL = { income: "recebidos", expense: "pagos", savings: "guardados", total: "" } as const;
 
 const shortDate = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : "");
+const monthName = (ym: string) => MONTHS_LONG[Number(ym.slice(5)) - 1];
+
+/** Fatura (mês) de uma compra no cartão `c`, quando não é a do mês da tabela. Parcelas não mudam de fatura. */
+function otherFatura(e: Entry, c: Block | null | undefined, ym: string): string | null {
+  if (!c || !hasCycle(c) || !e.date || e.installment) return null;
+  const f = faturaYm(e.date, c.cardClose!, c.cardDue!);
+  return f === ym ? null : f;
+}
+
+/** Etiqueta "fatura de novembro": pela data, a compra é de outra fatura. Clicar move. */
+function FaturaTag({ target, onMove }: { target: string; onMove: () => void }) {
+  return (
+    <button
+      className="mr-1 shrink-0 whitespace-nowrap rounded bg-amber-100 px-1.5 text-[12.5px] font-medium leading-[20px] text-amber-900 hover:bg-amber-200"
+      title={`Pela data, esta compra é da fatura de ${monthName(target)}. Clique para mover.`}
+      onClick={onMove}
+    >
+      fatura de {monthName(target).slice(0, 3)}
+    </button>
+  );
+}
 
 export function BlockTable({
   block,
@@ -61,8 +84,28 @@ export function BlockTable({
   const owner = members.find((m) => m.id === block.memberId) ?? null;
   const tableRef = useRef<HTMLTableElement>(null);
   const pendingFocus = useRef<{ index: number; col: string } | null>(null);
-  const range = monthRange(ym);
+  // o cartão com fechamento aceita as datas do período da fatura (que começa no mês anterior)
+  const cycle = card && hasCycle(block) ? faturaDates(ym, block.cardClose!, block.cardDue!) : null;
+  const monthR = monthRange(ym);
+  const range = cycle
+    ? { min: cycle.start < monthR.min ? cycle.start : monthR.min, max: cycle.close > monthR.max ? cycle.close : monthR.max }
+    : monthR;
   const today = todayIso();
+  const [moveNote, setMoveNote] = useState<string | null>(null);
+  const misplaced = card
+    ? [...block.entries, ...card.charges.map((c) => c.entry)].filter((e) => otherFatura(e, block, ym))
+    : [];
+  const moveToFatura = async (ids?: string[]) => {
+    const moved = await actions.moveFatura(block.id, ids);
+    const later = [...new Set(moved.filter((m) => !m.started).map((m) => monthName(m.ym)))];
+    const n = moved.length;
+    setMoveNote(
+      n
+        ? `${n} ${n === 1 ? "compra movida" : "compras movidas"}.` +
+            (later.length ? ` ${n === 1 ? "Entra" : "Entram"} em ${later.join(" e ")} quando o mês for iniciado.` : "")
+        : null,
+    );
+  };
   const isSavings = block.kind === "savings";
   const extras = block.columns;
 
@@ -300,6 +343,9 @@ export function BlockTable({
                 saldo={showSaldo ? (saldo[i] ?? 0) : null}
                 showStatus={showStatus}
                 cards={showPayWith ? cards : null}
+                onMoveFatura={(cardId, id) =>
+                  cardId === block.id ? moveToFatura([id]) : actions.moveFatura(cardId, [id])
+                }
               />
             ))}
             {block.entries.length === 0 && (
@@ -351,7 +397,12 @@ export function BlockTable({
                       <CreditCard size={13} className="mx-auto" style={{ color }} />
                     </td>
                     <td className="!px-2">
-                      <span className="block truncate">
+                      <span className="flex items-center">
+                      {(() => {
+                        const f = otherFatura(c.entry, block, ym);
+                        return f ? <FaturaTag target={f} onMove={() => moveToFatura([c.entry.id])} /> : null;
+                      })()}
+                      <span className="block min-w-0 truncate">
                         {c.entry.description || <span className="text-faint">Sem descrição</span>}
                         {c.entry.installment && (
                           <span className="text-muted">
@@ -360,6 +411,7 @@ export function BlockTable({
                           </span>
                         )}
                         <span className="text-muted"> · {c.block.name}</span>
+                      </span>
                       </span>
                     </td>
                     <td className="!px-2 text-right">{fmtNum(c.entry.amount)}</td>
@@ -420,6 +472,11 @@ export function BlockTable({
           sourceLabel={running ? refLabel(running.source, blocks, members) : ""}
           onEditSource={() => setDialog("settings")}
           onPatch={(p) => actions.patchBlock(block.id, p)}
+          cycle={cycle}
+          ym={ym}
+          misplaced={misplaced.length}
+          moveNote={moveNote}
+          onMoveAll={() => moveToFatura()}
         />
       ) : (
         <>
@@ -487,6 +544,7 @@ function EntryRow({
   saldo,
   showStatus,
   cards,
+  onMoveFatura,
 }: {
   entry: Entry;
   index: number;
@@ -500,10 +558,14 @@ function EntryRow({
   showStatus: boolean;
   /** cartões disponíveis para "Pagar com"; null = coluna escondida */
   cards: Block[] | null;
+  onMoveFatura: (cardId: string, entryId: string) => void;
 }) {
   const meta = KIND_META[block.kind];
   const patch = (p: Parameters<Actions["patchEntry"]>[2]) => actions.patchEntry(block.id, e.id, p);
   const onCard = !!cards && !!e.payWith && cards.some((c) => c.id === e.payWith);
+  // compra no cartão (na tabela dele ou paga com ele) que, pela data, é de outra fatura
+  const faturaCard = block.card ? block : (cards?.find((c) => c.id === e.payWith) ?? null);
+  const fatura = otherFatura(e, faturaCard, block.ym);
   const overdue = block.kind === "expense" && showStatus && !onCard && e.status === "pending" && !!e.date && e.date < today;
 
   return (
@@ -531,6 +593,7 @@ function EntryRow({
               onNav={(d) => navigate(i, "desc", d)}
             />
           </div>
+          {fatura && faturaCard && <FaturaTag target={fatura} onMove={() => onMoveFatura(faturaCard.id, e.id)} />}
           {e.installment && <InstallmentTag entry={e} onEnd={actions.removeInstallment} />}
         </div>
       </td>
@@ -659,6 +722,11 @@ function CardBar({
   sourceLabel,
   onEditSource,
   onPatch,
+  cycle,
+  ym,
+  misplaced,
+  moveNote,
+  onMoveAll,
 }: {
   block: Block;
   card: CardInfo;
@@ -666,6 +734,11 @@ function CardBar({
   sourceLabel: string;
   onEditSource: () => void;
   onPatch: (p: { budgetType?: "none" | "amount"; budgetValue?: number; cardPaid?: number | null }) => void;
+  cycle: { start: string; close: string; due: string } | null;
+  ym: string;
+  misplaced: number;
+  moveNote: string | null;
+  onMoveAll: () => void;
 }) {
   const paid = card.paid;
   const ratio = card.limit ? card.bill / card.limit : 0;
@@ -675,6 +748,34 @@ function CardBar({
 
   return (
     <div className="space-y-2 border-t border-grid bg-[#fafbfb] px-3 py-2 text-[14px]">
+      {/* fechamento e vencimento */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        {cycle ? (
+          <span className="text-muted">
+            Fatura de {monthName(ym)}: compras de {shortDate(cycle.start)} a {shortDate(cycle.close)} · fecha{" "}
+            <span className="font-semibold text-ink">{shortDate(cycle.close)}</span> · vence{" "}
+            <span className="font-semibold text-ink">{shortDate(cycle.due)}</span>{" "}
+            <button className="hover:underline" onClick={onEditSource} title="Mudar fechamento e vencimento">
+              (mudar)
+            </button>
+          </span>
+        ) : (
+          <button className="text-muted hover:text-ink hover:underline" onClick={onEditSource}>
+            Informe o dia do fechamento e do vencimento para separar as faturas
+          </button>
+        )}
+        {misplaced > 0 && (
+          <span className="flex items-center gap-2">
+            <span className="font-medium text-amber-900">
+              {misplaced} {misplaced === 1 ? "compra é" : "compras são"} de outra fatura
+            </span>
+            <button className="btn btn-sm" onClick={onMoveAll}>
+              Mover para a fatura certa
+            </button>
+          </span>
+        )}
+      </div>
+      {moveNote && <p className="font-medium text-brand">{moveNote}</p>}
       {/* limite */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <label className="flex items-center gap-2 text-muted">
