@@ -1,11 +1,13 @@
 "use client";
 
-import { Download } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MembersEditor } from "@/components/MembersEditor";
 import { api, errMsg } from "@/lib/client";
 import type { Member, SessionUser } from "@/lib/types";
+
+type ImportRule = { id: string; pattern: string; blockName: string; memberId: string | null };
 
 type AutoMonth = "copy" | "structure" | "off";
 
@@ -58,6 +60,8 @@ export default function AccountPage() {
   const [members, setMembers] = useState<Member[] | null>(null);
   const [autoMonth, setAutoMonth] = useState<AutoMonth | null>(null);
   const [autoFlash, setAutoFlash] = useState<Flash>(null);
+  const [rules, setRules] = useState<ImportRule[] | null>(null);
+  const [rulesFlash, setRulesFlash] = useState<Flash>(null);
 
   useEffect(() => {
     api<{ user: SessionUser }>("/api/auth/me").then((r) => {
@@ -66,6 +70,7 @@ export default function AccountPage() {
     });
     api<Member[]>("/api/members").then(setMembers).catch(() => setMembers([]));
     api<{ autoMonth: AutoMonth }>("/api/account").then((r) => setAutoMonth(r.autoMonth));
+    api<ImportRule[]>("/api/import/rules").then(setRules).catch(() => setRules([]));
   }, []);
 
   async function saveAutoMonth(mode: AutoMonth) {
@@ -77,6 +82,30 @@ export default function AccountPage() {
     } catch (err) {
       setAutoMonth(before);
       setAutoFlash({ kind: "err", text: errMsg(err) });
+    }
+  }
+
+  async function saveRule(rule: ImportRule, input: HTMLInputElement) {
+    const pattern = input.value;
+    if (pattern.trim() === rule.pattern) return;
+    try {
+      const r = await api<{ pattern: string }>(`/api/import/rules/${rule.id}`, { method: "PATCH", body: { pattern } });
+      setRules((rs) => rs && rs.map((x) => (x.id === rule.id ? { ...x, pattern: r.pattern } : x)));
+      input.value = r.pattern;
+      setRulesFlash({ kind: "ok", text: "Regra salva." });
+    } catch (err) {
+      setRulesFlash({ kind: "err", text: errMsg(err) });
+      input.value = rule.pattern;
+    }
+  }
+
+  async function removeRule(rule: ImportRule) {
+    setRules((rs) => rs && rs.filter((x) => x.id !== rule.id));
+    try {
+      await api(`/api/import/rules/${rule.id}`, { method: "DELETE" });
+    } catch (err) {
+      setRulesFlash({ kind: "err", text: errMsg(err) });
+      api<ImportRule[]>("/api/import/rules").then(setRules);
     }
   }
 
@@ -168,6 +197,48 @@ export default function AccountPage() {
           </fieldset>
           <div className="mt-2 min-h-[22px]">
             <Msg f={autoFlash} />
+          </div>
+        </Panel>
+
+        <Panel
+          id="regras"
+          title="Regras da importação"
+          text="Ao importar o extrato, o lançamento que tem todas as palavras da regra vai para a tabela dela. As regras nascem das escolhas que vocês fazem na importação."
+        >
+          {!rules ? (
+            <div className="h-11" />
+          ) : rules.length === 0 ? (
+            <p className="text-[15px] text-muted">
+              Nenhuma regra ainda. Na planilha, use <em>Importar extrato</em>; quando você muda a tabela de um lançamento, a escolha vira regra.
+            </p>
+          ) : (
+            <ul className="max-h-[420px] divide-y divide-grid overflow-y-auto rounded-lg border border-grid">
+              {rules.map((r) => (
+                <li key={r.id} className="flex items-center gap-2 px-2 py-1.5">
+                  <input
+                    key={r.pattern}
+                    aria-label="Palavras da regra"
+                    className="field h-9 min-w-0 flex-1 text-[15px]"
+                    defaultValue={r.pattern}
+                    onBlur={(e) => saveRule(r, e.currentTarget)}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                  />
+                  <span className="shrink-0 text-muted">→</span>
+                  <span className="w-[38%] truncate text-[15px]" title={r.blockName}>
+                    {r.blockName}
+                    {r.memberId && members?.some((x) => x.id === r.memberId) && (
+                      <span className="text-muted"> · {members.find((x) => x.id === r.memberId)!.name}</span>
+                    )}
+                  </span>
+                  <button className="btn btn-ghost h-9 w-9 shrink-0 px-0 text-muted hover:text-expense" onClick={() => removeRule(r)} aria-label={`Excluir regra ${r.pattern}`}>
+                    <Trash2 size={16} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-2 min-h-[22px]">
+            <Msg f={rulesFlash} />
           </div>
         </Panel>
 

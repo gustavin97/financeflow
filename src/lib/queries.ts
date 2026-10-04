@@ -9,6 +9,7 @@ import { DEFAULT_BLOCKS } from "./templates";
 import { GOAL_COLORS, MEMBER_COLORS } from "./kinds";
 import { remapRef } from "./calc";
 import { addMonths, daysInMonth, diffMonths, shiftDateToMonth } from "./dates";
+import { cleanPattern } from "./statement";
 import type {
   AnnualPayload,
   Block,
@@ -785,6 +786,129 @@ export function deleteInstallment(userId: string, id: string, fromYm: string) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Importação de extrato                                               */
+/* ------------------------------------------------------------------ */
+
+/*
+ * O arquivo é lido no navegador (lib/statement.ts); aqui chegam as linhas já
+ * com a tabela escolhida. As regras ("ifood" -> Alimentação) guardam a tabela
+ * pelo nome e dono, como os parcelamentos, e valem para qualquer mês.
+ */
+
+export interface ImportRule {
+  id: string;
+  pattern: string;
+  blockName: string;
+  memberId: string | null;
+}
+
+export function listImportRules(userId: string): ImportRule[] {
+  return (
+    getDb()
+      .prepare(
+        "SELECT id, pattern, block_name, block_member_id FROM import_rules WHERE user_id = ? ORDER BY updated_at DESC, pattern",
+      )
+      .all(userId) as Row[]
+  ).map((r) => ({ id: r.id, pattern: r.pattern, blockName: r.block_name, memberId: r.block_member_id ?? null }));
+}
+
+/** Regras com a tabela correspondente no mês (mesmo nome e dono; senão, só o mesmo nome). */
+export function importPreview(userId: string, ym: string, keys: string[]) {
+  const db = getDb();
+  const blocks = db
+    .prepare("SELECT id, name, member_id FROM blocks WHERE user_id = ? AND ym = ? AND kind != 'total' ORDER BY position")
+    .all(userId, ym) as Row[];
+  const rules = listImportRules(userId).flatMap((r) => {
+    const same = blocks.filter((b) => (b.name as string).trim().toLowerCase() === r.blockName.trim().toLowerCase());
+    const b = same.find((x) => (x.member_id ?? null) === r.memberId) ?? same[0];
+    return b ? [{ id: r.id, pattern: r.pattern, blockId: b.id as string }] : [];
+  });
+  const st = db.prepare("SELECT 1 FROM import_seen WHERE user_id = ? AND key = ?");
+  const seen = keys.filter((k) => st.get(userId, k));
+  return { rules, seen };
+}
+
+export function importStatement(
+  userId: string,
+  input: {
+    ym: string;
+    payWith: string | null;
+    rows: { key: string; blockId: string; description: string; amount: number; date: string }[];
+    learn: { pattern: string; blockId: string }[];
+  },
+) {
+  const db = getDb();
+  const blocks = new Map(
+    (
+      db
+        .prepare("SELECT * FROM blocks WHERE user_id = ? AND ym = ? AND kind != 'total'")
+        .all(userId, input.ym) as Row[]
+    ).map((b) => [b.id as string, b]),
+  );
+  const block = (id: string) => {
+    const b = blocks.get(id);
+    if (!b) throw new ApiError("Uma das tabelas escolhidas não existe mais neste mês. Recarregue a página.", 404);
+    return b;
+  };
+  if (input.payWith) {
+    const c = blocks.get(input.payWith);
+    if (!c || c.kind !== "expense" || c.card !== 1) throw new ApiError("Cartão não encontrado neste mês.", 404);
+  }
+
+  const nextPos = new Map<string, number>();
+  const posSt = db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM entries WHERE block_id = ?");
+  const insert = db.prepare(
+    `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, position, pay_with)
+     VALUES (?,?,?,?,?,?,?,?,?)`,
+  );
+  const markSeen = db.prepare("INSERT OR IGNORE INTO import_seen (user_id, key) VALUES (?, ?)");
+  const saveRule = db.prepare(
+    `INSERT INTO import_rules (id, user_id, pattern, block_name, block_member_id) VALUES (?,?,?,?,?)
+     ON CONFLICT (user_id, pattern) DO UPDATE SET
+       block_name = excluded.block_name, block_member_id = excluded.block_member_id, updated_at = datetime('now')`,
+  );
+
+  let learned = 0;
+  db.transaction(() => {
+    for (const r of input.rows) {
+      const b = block(r.blockId);
+      const pos = nextPos.get(b.id) ?? ((posSt.get(b.id) as Row).p as number);
+      nextPos.set(b.id, pos + 1);
+      // no extrato, saída é negativa; nas tabelas de despesa/cofrinho ela vira valor positivo
+      // (uma entrada numa tabela de despesa, como um estorno, fica negativa e abate o total)
+      const amount = b.kind === "income" ? r.amount : -r.amount;
+      const payWith = input.payWith && b.kind === "expense" && b.card !== 1 ? input.payWith : null;
+      insert.run(uid(), b.id, userId, r.description, amount, r.date, "done", pos, payWith);
+      markSeen.run(userId, r.key);
+    }
+    for (const l of input.learn) {
+      const pattern = cleanPattern(l.pattern);
+      if (!pattern) continue;
+      const b = block(l.blockId);
+      saveRule.run(uid(), userId, pattern, b.name, b.member_id ?? null);
+      learned++;
+    }
+  })();
+  return { imported: input.rows.length, learned };
+}
+
+export function updateImportRule(userId: string, id: string, pattern: string) {
+  const clean = cleanPattern(pattern);
+  if (!clean) throw new ApiError("A regra precisa de pelo menos uma palavra.");
+  const db = getDb();
+  if (!db.prepare("SELECT 1 FROM import_rules WHERE id = ? AND user_id = ?").get(id, userId))
+    throw new ApiError("Regra não encontrada.", 404);
+  if (db.prepare("SELECT 1 FROM import_rules WHERE user_id = ? AND pattern = ? AND id != ?").get(userId, clean, id))
+    throw new ApiError("Já existe uma regra com essas palavras.");
+  db.prepare("UPDATE import_rules SET pattern = ? WHERE id = ?").run(clean, id);
+  return { pattern: clean };
+}
+
+export function deleteImportRule(userId: string, id: string) {
+  getDb().prepare("DELETE FROM import_rules WHERE id = ? AND user_id = ?").run(id, userId);
+}
+
+/* ------------------------------------------------------------------ */
 /* Metas do cofrinho                                                   */
 /* ------------------------------------------------------------------ */
 
@@ -951,6 +1075,7 @@ export function exportAll(userId: string) {
     installments: (
       db.prepare("SELECT * FROM installments WHERE user_id = ? ORDER BY created_at").all(userId) as Row[]
     ).map(({ user_id: _u, ...r }) => r),
+    importRules: listImportRules(userId),
     months: months.map((m) => {
       const p = getMonth(userId, m.ym);
       return { ym: m.ym, blocks: p.blocks };

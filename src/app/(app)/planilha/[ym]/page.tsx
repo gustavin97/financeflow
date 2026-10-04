@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, X } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, FileUp, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -8,6 +8,7 @@ import { AlertsPanel } from "@/components/AlertsPanel";
 import { MembersDialog } from "@/components/MembersEditor";
 import { BlockTable } from "@/components/sheet/BlockTable";
 import { NewBlockDialog } from "@/components/sheet/blockDialogs";
+import { ImportDialog } from "@/components/sheet/ImportDialog";
 import { SortableGrid } from "@/components/sheet/SortableGrid";
 import { TotalTable } from "@/components/sheet/TotalTable";
 import { DistributionBar } from "@/components/sheet/DistributionBar";
@@ -40,6 +41,7 @@ function MonthView({ ym }: { ym: string }) {
   const { data } = m;
   const [showNew, setShowNew] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   /** filtro de tabelas: "all", "shared" ou id da pessoa */
   const [who, setWho] = useState("all");
 
@@ -103,7 +105,10 @@ function MonthView({ ym }: { ym: string }) {
             </Link>
           )}
           {data?.initialized && (
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex flex-wrap gap-2">
+              <button className="btn h-11" onClick={() => setShowImport(true)}>
+                <FileUp size={17} /> Importar extrato
+              </button>
               <button className="btn h-11" onClick={() => setShowMembers(true)}>
                 <Users size={17} /> Pessoas{members.length ? ` (${members.length})` : ""}
               </button>
@@ -235,6 +240,15 @@ function MonthView({ ym }: { ym: string }) {
             setShowNew(false);
             setShowMembers(true);
           }}
+        />
+      )}
+      {showImport && data && (
+        <ImportDialog
+          ym={ym}
+          blocks={data.blocks}
+          members={members}
+          onClose={() => setShowImport(false)}
+          onImport={m.importStatement}
         />
       )}
       {showMembers && (

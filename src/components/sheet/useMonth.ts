@@ -27,6 +27,12 @@ export interface NewInstallment {
   date: string | null;
   payWith: string | null;
 }
+export interface NewImport {
+  /** cartão que paga as despesas (fatura); null = saem do saldo */
+  payWith: string | null;
+  rows: { key: string; blockId: string; description: string; amount: number; date: string }[];
+  learn: { pattern: string; blockId: string }[];
+}
 export type StartMode = "default" | "blank" | "copy" | "structure";
 
 /**
@@ -187,6 +193,13 @@ export function useMonth(ym: string) {
     api(`/api/installments/${installmentId}`, { method: "DELETE", body: { fromYm: ym } }).catch(fail);
   };
 
+  /* ---------- importação de extrato (muitas linhas em várias tabelas: recarrega o mês) ---------- */
+  const importStatement = async (input: NewImport) => {
+    const r = await api<{ imported: number; learned: number }>("/api/import", { body: { ym, ...input } });
+    await load();
+    return r;
+  };
+
   /* ---------- pessoas (a lista é editada no diálogo; aqui só refletimos) ---------- */
   const setMembers = (members: Member[]) => {
     setData((d) => {
@@ -216,5 +229,6 @@ export function useMonth(ym: string) {
     removeEntry,
     addInstallment,
     removeInstallment,
+    importStatement,
   };
 }

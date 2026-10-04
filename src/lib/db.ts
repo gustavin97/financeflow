@@ -86,6 +86,26 @@ CREATE TABLE IF NOT EXISTS installments (
 );
 CREATE INDEX IF NOT EXISTS idx_installments_user ON installments(user_id);
 
+-- importação de extrato: "palavras da descrição -> tabela", aprendidas a cada importação.
+-- A tabela é guardada pelo nome (e dono) porque os ids mudam de um mês para o outro.
+CREATE TABLE IF NOT EXISTS import_rules (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  pattern         TEXT NOT NULL,
+  block_name      TEXT NOT NULL,
+  block_member_id TEXT,
+  updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, pattern)
+);
+
+-- lançamentos de extrato já importados (FITID do OFX ou assinatura da linha do CSV)
+CREATE TABLE IF NOT EXISTS import_seen (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key        TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, key)
+);
+
 -- tabelas (blocos) de cada mês: Receitas, Contas da casa, Lazer, Cofrinho, Totais...
 ${BLOCKS_TABLE("blocks")}
 

@@ -81,6 +81,13 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 **Mês novo automático.** Na virada do mês, o primeiro acesso ao app (em qualquer página) já abre o mês novo copiando o último mês usado, com as parcelas do mês lançadas, e a planilha mostra um aviso até alguém clicar em *Entendi*. Em *Conta → Mês novo automático* dá para copiar só as tabelas ou desligar. Sem nenhum mês anterior, a escolha de como começar continua com vocês. O mês vira pelo horário de Brasília (`APP_TIMEZONE`).
 
+**Importar extrato do banco.** Na planilha, *Importar extrato* lê o arquivo **OFX** (também chamado de “Money” ou “Quicken”) ou **CSV** que o banco exporta, da conta ou da fatura do cartão. O arquivo é lido no navegador; no CSV, as colunas de data, descrição e valor são reconhecidas sozinhas (Nubank, Itaú, BB, Inter e outros) e dá para corrigir. Cada lançamento aparece com a tabela sugerida:
+
+- **Regras**: quando você troca a tabela de um lançamento, as palavras da descrição viram regra (`ifood restaurante` → *Alimentação*) e, a partir da próxima importação, ele já vem na tabela certa. Os parecidos do mesmo arquivo mudam junto. As regras ficam em *Conta → Regras da importação*, onde dá para editar as palavras ou excluir.
+- **Sem duplicar**: o que já foi importado aparece marcado e fica de fora (dá para incluir mesmo assim).
+- **Conta x fatura**: no extrato da conta, só entram por padrão os lançamentos do mês aberto. Na fatura do cartão entram todas as compras; as que vão para outras tabelas de despesa ficam como *pagas com o cartão*. Pagamentos da fatura e estornos ficam de fora, a menos que você escolha uma tabela.
+- Saídas viram despesas e entradas viram receitas, já marcadas como pagas/recebidas. Uma entrada lançada numa tabela de despesa (um estorno) entra negativa e abate o total.
+
 **Visão anual.** Os 12 meses lado a lado, gráfico de receitas x despesas x cofrinho, saldo acumulado e a divisão por categoria.
 
 ## Dicas de uso na planilha
@@ -101,11 +108,12 @@ src/
   app/
     (auth)/login, (auth)/cadastro   telas de acesso
     (app)/planilha, cofrinho, anual, conta   telas logadas
-    api/                            rotas (auth, months, blocks, entries, goals, annual, export, account)
+    api/                            rotas (auth, months, blocks, entries, installments, import, goals, annual, export, account)
   components/sheet/                 tabela editável, resumo, barra de distribuição, abas de mês
   lib/
     db.ts                           conexão e schema SQLite
     queries.ts                      toda a regra de dados (sempre filtrada pelo usuário)
+    statement.ts                    leitura de extratos OFX/CSV e regras de categorização
     summary.ts, money.ts, dates.ts  cálculos e formatação
 scripts/seed.ts                     dados de demonstração
 data/                               banco SQLite (criado na primeira execução)

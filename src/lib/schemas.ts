@@ -141,3 +141,36 @@ export const memberCreateSchema = z.object({
 });
 
 export const memberPatchSchema = memberCreateSchema.partial();
+
+const importKey = z.string().min(1).max(300);
+
+export const importPreviewSchema = z.object({
+  ym: ymSchema,
+  keys: z.array(importKey).max(3000),
+});
+
+export const importSchema = z.object({
+  ym: ymSchema,
+  /** cartão que paga as despesas importadas (fatura); null = saem do saldo */
+  payWith: z.string().min(1).max(64).nullable(),
+  rows: z
+    .array(
+      z.object({
+        key: importKey,
+        blockId: z.string().min(1).max(64),
+        description: z.string().max(200),
+        /** centavos, como no extrato: negativo = saída */
+        amount: cents,
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida."),
+      }),
+    )
+    .min(1, "Escolha pelo menos um lançamento para importar.")
+    .max(3000, "No máximo 3000 lançamentos por vez."),
+  learn: z
+    .array(z.object({ pattern: z.string().max(200), blockId: z.string().min(1).max(64) }))
+    .max(3000),
+});
+
+export const importRulePatchSchema = z.object({
+  pattern: z.string().trim().min(1, "A regra precisa de pelo menos uma palavra.").max(120),
+});
