@@ -598,23 +598,30 @@ export function installmentAmount(total: number, count: number, no: number): num
   return no === 1 ? total - each * (count - 1) : each;
 }
 
-/** Tabela de despesa do mês com esse nome; criada se ainda não existir. */
+/**
+ * Tabela de despesa do mês com esse nome e dono; criada se ainda não existir.
+ * O dono separa nomes parecidos ("Minhas contas" do marido e "Minhas Contas" da
+ * esposa); `undefined` aceita qualquer dono. Entre as que servem, vale o nome idêntico.
+ */
 function ensureExpenseBlock(
   userId: string,
   ym: string,
   name: string,
   card: boolean,
-  memberId: string | null,
+  memberId: string | null | undefined,
 ): string {
   const db = getDb();
+  // pessoa excluída depois do lançamento: as tabelas dela passaram a ser do conjunto
+  if (memberId && !db.prepare("SELECT 1 FROM members WHERE id = ? AND user_id = ?").get(memberId, userId))
+    memberId = null;
   const found = db
     .prepare(
       `SELECT id FROM blocks WHERE user_id = ? AND ym = ? AND kind = 'expense' AND card = ? AND lower(name) = lower(?)
-        ORDER BY position LIMIT 1`,
+          AND (? = 1 OR member_id IS ?)
+        ORDER BY (name = ?) DESC, position LIMIT 1`,
     )
-    .get(userId, ym, card ? 1 : 0, name) as Row | undefined;
+    .get(userId, ym, card ? 1 : 0, name, memberId === undefined ? 1 : 0, memberId ?? null, name) as Row | undefined;
   if (found) return found.id;
-  const member = memberId && db.prepare("SELECT 1 FROM members WHERE id = ? AND user_id = ?").get(memberId, userId);
   const pos = (
     db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM blocks WHERE user_id = ? AND ym = ?").get(userId, ym) as Row
   ).p as number;
@@ -625,7 +632,7 @@ function ensureExpenseBlock(
     budgetValue: 0,
     columns: [],
     position: pos,
-    memberId: member ? memberId : null,
+    memberId: memberId ?? null,
     card,
   });
 }
@@ -643,7 +650,7 @@ function materializeInstallments(userId: string, ym: string, onlyId?: string) {
     if (no > p.count) continue;
     if (db.prepare("SELECT 1 FROM entries WHERE inst_id = ? AND inst_no = ?").get(p.id, no)) continue;
     const blockId = ensureExpenseBlock(userId, ym, p.block_name, p.block_card === 1, p.block_member_id);
-    const payWith = p.pay_with_name ? ensureExpenseBlock(userId, ym, p.pay_with_name, true, null) : null;
+    const payWith = p.pay_with_name ? ensureExpenseBlock(userId, ym, p.pay_with_name, true, undefined) : null;
     const pos = (
       db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM entries WHERE block_id = ?").get(blockId) as Row
     ).p as number;
