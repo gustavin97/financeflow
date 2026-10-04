@@ -29,6 +29,8 @@ const SURPLUS_OPTIONS: { value: SurplusPrefs["mode"]; title: string; text: strin
   { value: "off", title: "Não fazer nada", text: "A sobra continua no saldo acumulado, como antes." },
 ];
 
+type EmailPrefs = { enabled: boolean; hour: number; to: string; configured: boolean };
+
 type Flash = { kind: "ok" | "err"; text: string } | null;
 
 function Msg({ f }: { f: Flash }) {
@@ -74,6 +76,42 @@ export default function AccountPage() {
   const [pctText, setPctText] = useState("");
   const [goals, setGoals] = useState<{ id: string; name: string }[]>([]);
   const [surplusFlash, setSurplusFlash] = useState<Flash>(null);
+  const [email, setEmail] = useState<EmailPrefs | null>(null);
+  const [emailFlash, setEmailFlash] = useState<Flash>(null);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    api<{ email: EmailPrefs }>("/api/account").then((r) => setEmail(r.email));
+  }, []);
+
+  async function saveEmail(patch: { enabled?: boolean; hour?: number }) {
+    if (!email) return;
+    const before = email;
+    setEmail({ ...email, ...patch });
+    try {
+      await api("/api/account", { method: "PATCH", body: { emailAlerts: patch.enabled, emailHour: patch.hour } });
+      setEmailFlash({ kind: "ok", text: "Preferência salva." });
+    } catch (err) {
+      setEmail(before);
+      setEmailFlash({ kind: "err", text: errMsg(err) });
+    }
+  }
+
+  async function testEmail() {
+    setTesting(true);
+    setEmailFlash(null);
+    try {
+      const r = await api<{ count: number }>("/api/account/test-email", { body: {} });
+      setEmailFlash({
+        kind: "ok",
+        text: `E-mail enviado para ${email?.to} com ${r.count} ${r.count === 1 ? "aviso" : "avisos"}. Confira também o spam.`,
+      });
+    } catch (err) {
+      setEmailFlash({ kind: "err", text: errMsg(err) });
+    } finally {
+      setTesting(false);
+    }
+  }
 
   useEffect(() => {
     api<{ surplus: SurplusPrefs }>("/api/account").then((r) => {
@@ -234,6 +272,63 @@ export default function AccountPage() {
           </fieldset>
           <div className="mt-2 min-h-[22px]">
             <Msg f={autoFlash} />
+          </div>
+        </Panel>
+
+        <Panel
+          id="alertas"
+          title="Alertas por e-mail"
+          text="Uma vez por dia, os avisos da planilha (contas vencendo ou vencidas, limite estourado, mês no vermelho...) chegam no seu e-mail. Só quando há algo novo."
+        >
+          {!email ? (
+            <div className="h-11" />
+          ) : (
+            <div className="space-y-3">
+              {!email.configured && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[14.5px] text-amber-900">
+                  O envio ainda não está configurado no servidor. Preencha <code>SMTP_HOST</code>, <code>SMTP_USER</code> e{" "}
+                  <code>SMTP_PASS</code> no arquivo <code>.env</code> e reinicie o app (veja o README).
+                </div>
+              )}
+              <label className="flex cursor-pointer items-center gap-3 text-[15.5px]">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-brand"
+                  checked={email.enabled}
+                  onChange={(e) => saveEmail({ enabled: e.target.checked })}
+                />
+                Receber os alertas em <strong className="font-semibold">{email.to}</strong>
+              </label>
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="label" htmlFor="email-hour">
+                    Horário
+                  </label>
+                  <select
+                    id="email-hour"
+                    className="field w-[120px]"
+                    value={email.hour}
+                    disabled={!email.enabled}
+                    onChange={(e) => saveEmail({ hour: Number(e.target.value) })}
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, "0")}:00
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button className="btn" onClick={testEmail} disabled={testing || !email.configured}>
+                  {testing ? "Enviando..." : "Enviar teste agora"}
+                </button>
+              </div>
+              <p className="text-[14px] text-muted">
+                O app precisa estar rodando no horário para enviar. Se estiver desligado, o e-mail sai quando ele voltar a rodar no mesmo dia.
+              </p>
+            </div>
+          )}
+          <div className="mt-2 min-h-[22px]">
+            <Msg f={emailFlash} />
           </div>
         </Panel>
 

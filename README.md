@@ -42,7 +42,10 @@ Variáveis de ambiente (copie `.env.example` para `.env`):
 | `COOKIE_SECURE` | Use `true` quando servir por HTTPS. |
 | `PUBLIC_ACCESS` | `true` libera o acesso sem login (entra como o primeiro usuário). Só funciona em desenvolvimento; em produção é ignorado. |
 | `ALLOW_SIGNUP` | A primeira conta sempre pode ser criada; depois o cadastro fecha. Use `true` para permitir novas contas. |
-| `APP_TIMEZONE` | Fuso que decide quando o mês vira para abrir o mês novo sozinho (padrão `America/Sao_Paulo`). |
+| `APP_TIMEZONE` | Fuso que decide quando o mês vira para abrir o mês novo sozinho e o horário dos alertas por e-mail (padrão `America/Sao_Paulo`). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Servidor de e-mail para os alertas (Gmail: `smtp.gmail.com`, porta 465, senha de app). Sem eles, nada é enviado. |
+| `MAIL_FROM` | Remetente dos e-mails (padrão: "Finance Flow <SMTP_USER>"). |
+| `APP_URL` | Endereço do app usado no link do e-mail (padrão `http://localhost:3000`). |
 
 O banco é um único arquivo SQLite. Para fazer backup, copie `data/financeflow.db`.
 
@@ -90,6 +93,8 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 **Sobra do mês para o cofrinho.** Quando um mês fecha no azul, a sobra (saldo previsto do mês, sem passar do saldo acumulado) pode ir para uma meta: vira a linha *Sobra de setembro* numa tabela de cofrinho do conjunto naquele mês (se não houver, a tabela *Cofrinho* é criada), conta no progresso da meta e sai do saldo acumulado. Em *Conta → Sobra do mês* você escolhe **perguntar** (o mês atual mostra quanto sobrou, com a meta e a porcentagem para confirmar), **guardar sozinho** na virada do mês (com aviso e botão de desfazer) ou não fazer nada. Cada mês só é guardado uma vez.
 
+**Alertas por e-mail.** Em *Conta → Alertas por e-mail*, ligue o resumo diário e escolha o horário. Os mesmos sinalizadores da planilha (contas vencidas ou vencendo, limite estourado, mês no vermelho, fatura perto do limite...) chegam no e-mail da conta, só quando há aviso novo ou que mudou (contas vencidas e vencendo avisam a cada dia até serem marcadas como pagas). O botão *Enviar teste agora* manda o resumo na hora. O app precisa estar rodando: a verificação acontece a cada 5 minutos e, se ele estava desligado no horário, o e-mail sai quando voltar a rodar no mesmo dia. Para configurar o envio pelo Gmail, crie uma [senha de app](https://myaccount.google.com/apppasswords) (exige verificação em duas etapas) e preencha no `.env`: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER` (seu Gmail) e `SMTP_PASS` (a senha de app). Reinicie o app depois.
+
 **Visão anual.** Os 12 meses lado a lado, gráfico de receitas x despesas x cofrinho, saldo acumulado e a divisão por categoria.
 
 ## Dicas de uso na planilha
@@ -101,7 +106,7 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · SQLite embutido do Node (`node:sqlite`, sem dependência nativa) · `bcryptjs` · `jose` (JWT em cookie httpOnly) · `zod`.
+Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · SQLite embutido do Node (`node:sqlite`, sem dependência nativa) · `bcryptjs` · `jose` (JWT em cookie httpOnly) · `zod` · `nodemailer`.
 
 ## Estrutura
 

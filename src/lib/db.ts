@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS users (
   surplus_mode  TEXT NOT NULL DEFAULT 'ask',
   surplus_goal  TEXT,
   surplus_pct   INTEGER NOT NULL DEFAULT 100,
+  -- resumo diário de alertas por e-mail (hora no APP_TIMEZONE) e o último dia verificado
+  email_alerts  INTEGER NOT NULL DEFAULT 0,
+  email_hour    INTEGER NOT NULL DEFAULT 8,
+  email_last    TEXT,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -113,6 +117,14 @@ CREATE TABLE IF NOT EXISTS import_seen (
   key        TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, key)
+);
+
+-- alertas já enviados por e-mail (para não repetir o mesmo aviso todo dia)
+CREATE TABLE IF NOT EXISTS alert_sent (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  fp      TEXT NOT NULL,
+  sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, fp)
 );
 
 -- tabelas (blocos) de cada mês: Receitas, Contas da casa, Lazer, Cofrinho, Totais...
@@ -201,6 +213,13 @@ function migrate(raw: Pick<DatabaseSync, "exec" | "prepare">) {
     raw.exec("ALTER TABLE months ADD COLUMN surplus_state TEXT");
     raw.exec("ALTER TABLE months ADD COLUMN surplus_entry TEXT");
     raw.exec("ALTER TABLE months ADD COLUMN surplus_seen INTEGER NOT NULL DEFAULT 0");
+  }
+
+  // alertas por e-mail
+  if (!cols("users").has("email_alerts")) {
+    raw.exec("ALTER TABLE users ADD COLUMN email_alerts INTEGER NOT NULL DEFAULT 0");
+    raw.exec("ALTER TABLE users ADD COLUMN email_hour INTEGER NOT NULL DEFAULT 8");
+    raw.exec("ALTER TABLE users ADD COLUMN email_last TEXT");
   }
 
   // compras parceladas

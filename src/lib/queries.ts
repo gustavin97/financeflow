@@ -442,6 +442,21 @@ export function setSurplusPrefs(userId: string, patch: Partial<SurplusPrefs>) {
   if (patch.pct !== undefined) db.prepare("UPDATE users SET surplus_pct = ? WHERE id = ?").run(patch.pct, userId);
 }
 
+/* ---------- alertas por e-mail (o envio fica em lib/notify.ts) ---------- */
+
+export function getEmailPrefs(userId: string) {
+  const r = getDb().prepare("SELECT email, email_alerts, email_hour FROM users WHERE id = ?").get(userId) as Row | undefined;
+  return { enabled: r?.email_alerts === 1, hour: (r?.email_hour as number) ?? 8, to: (r?.email as string) ?? "" };
+}
+
+export function setEmailPrefs(userId: string, patch: { enabled?: boolean; hour?: number }) {
+  const db = getDb();
+  if (patch.enabled !== undefined) db.prepare("UPDATE users SET email_alerts = ? WHERE id = ?").run(patch.enabled ? 1 : 0, userId);
+  // mudou o horário: pode enviar de novo hoje, no horário novo
+  if (patch.hour !== undefined)
+    db.prepare("UPDATE users SET email_hour = ?, email_last = NULL WHERE id = ?").run(patch.hour, userId);
+}
+
 /** Último mês iniciado antes de `ym`. */
 function monthBefore(userId: string, ym: string): Row | undefined {
   return getDb()
