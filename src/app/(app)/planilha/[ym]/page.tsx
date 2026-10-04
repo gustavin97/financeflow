@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Plus, Users, X } from "lucide-react";
+import { CalendarCheck, ChevronLeft, ChevronRight, Plus, Users, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -134,6 +134,24 @@ function MonthView({ ym }: { ym: string }) {
 
         {data && data.initialized && summary && calc && (
           <div className="space-y-4">
+            {data.autoFrom && (
+              <div
+                role="status"
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 border border-brand/30 bg-brand-soft px-4 py-2.5 text-[15px]"
+              >
+                <CalendarCheck size={18} className="shrink-0 text-brand" />
+                <span className="flex-1">
+                  <strong className="font-semibold">{title} foi aberto sozinho</strong> a partir de {ymLabel(data.autoFrom)}.
+                  Confira os valores do mês; as parcelas já entraram.{" "}
+                  <Link href="/conta#automacao" className="font-medium text-brand underline-offset-2 hover:underline">
+                    Mudar isso
+                  </Link>
+                </span>
+                <button className="btn btn-sm" onClick={m.dismissAuto}>
+                  Entendi
+                </button>
+              </div>
+            )}
             <SummaryStrip s={summary} carry={data.carry} />
             <AlertsPanel alerts={alerts} />
             {members.length > 0 ? (

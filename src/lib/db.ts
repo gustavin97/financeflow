@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS users (
   name          TEXT NOT NULL,
   email         TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  -- abrir o mês novo sozinho: 'copy', 'structure' ou 'off'
+  auto_month    TEXT NOT NULL DEFAULT 'copy',
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -37,6 +39,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS months (
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   ym         TEXT NOT NULL,
+  -- mês aberto sozinho a partir deste (aviso na planilha até ser dispensado)
+  auto_from  TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, ym)
 );
@@ -152,6 +156,11 @@ function migrate(raw: DatabaseSync) {
   if (!blockCols.has("card_paid")) raw.exec("ALTER TABLE blocks ADD COLUMN card_paid INTEGER");
   if (!entryCols.has("pay_with"))
     raw.exec("ALTER TABLE entries ADD COLUMN pay_with TEXT REFERENCES blocks(id) ON DELETE SET NULL");
+
+  // mês novo aberto sozinho
+  if (!cols("users").has("auto_month"))
+    raw.exec("ALTER TABLE users ADD COLUMN auto_month TEXT NOT NULL DEFAULT 'copy'");
+  if (!cols("months").has("auto_from")) raw.exec("ALTER TABLE months ADD COLUMN auto_from TEXT");
 
   // compras parceladas
   if (!entryCols.has("inst_id")) {

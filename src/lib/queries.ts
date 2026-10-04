@@ -196,9 +196,10 @@ function carryBefore(userId: string, ym: string): Carry {
 
 export function getMonth(userId: string, ym: string): MonthPayload {
   const db = getDb();
-  const initialized = !!db
-    .prepare("SELECT 1 FROM months WHERE user_id = ? AND ym = ?")
-    .get(userId, ym);
+  const monthRow = db.prepare("SELECT auto_from FROM months WHERE user_id = ? AND ym = ?").get(userId, ym) as
+    | Row
+    | undefined;
+  const initialized = !!monthRow;
   const prev = db
     .prepare("SELECT ym FROM months WHERE user_id = ? AND ym < ? ORDER BY ym DESC LIMIT 1")
     .get(userId, ym) as Row | undefined;
@@ -232,6 +233,7 @@ export function getMonth(userId: string, ym: string): MonthPayload {
   return {
     ym,
     initialized,
+    autoFrom: (monthRow?.auto_from as string | null) ?? null,
     previousYm: prev?.ym ?? null,
     blocks,
     goals,
@@ -351,6 +353,47 @@ export function initMonth(userId: string, ym: string, mode: StartMode) {
     materializeInstallments(userId, ym);
   });
   run();
+}
+
+/* ------------------------------------------------------------------ */
+/* Mês novo aberto sozinho                                             */
+/* ------------------------------------------------------------------ */
+
+export type AutoMonth = "copy" | "structure" | "off";
+
+/** Fuso usado para decidir quando o mês vira (o servidor pode estar em UTC). */
+export const APP_TIMEZONE = process.env.APP_TIMEZONE || "America/Sao_Paulo";
+
+export function getAutoMonth(userId: string): AutoMonth {
+  const r = getDb().prepare("SELECT auto_month FROM users WHERE id = ?").get(userId) as Row | undefined;
+  return (r?.auto_month as AutoMonth) ?? "copy";
+}
+
+export function setAutoMonth(userId: string, mode: AutoMonth) {
+  getDb().prepare("UPDATE users SET auto_month = ? WHERE id = ?").run(mode, userId);
+}
+
+/**
+ * Abre `ym` sozinho, copiando o último mês iniciado, conforme a preferência da conta.
+ * Só para quem já usa a planilha: sem mês anterior, a escolha de como começar fica com a pessoa.
+ */
+export function autoStartMonth(userId: string, ym: string) {
+  const db = getDb();
+  if (db.prepare("SELECT 1 FROM months WHERE user_id = ? AND ym = ?").get(userId, ym)) return;
+  const mode = getAutoMonth(userId);
+  if (mode === "off") return;
+  const prev = db
+    .prepare("SELECT ym FROM months WHERE user_id = ? AND ym < ? ORDER BY ym DESC LIMIT 1")
+    .get(userId, ym) as Row | undefined;
+  if (!prev) return;
+  db.transaction(() => {
+    initMonth(userId, ym, mode);
+    db.prepare("UPDATE months SET auto_from = ? WHERE user_id = ? AND ym = ?").run(prev.ym, userId, ym);
+  })();
+}
+
+export function dismissAutoNotice(userId: string, ym: string) {
+  getDb().prepare("UPDATE months SET auto_from = NULL WHERE user_id = ? AND ym = ?").run(userId, ym);
 }
 
 /* ------------------------------------------------------------------ */

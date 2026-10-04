@@ -42,6 +42,7 @@ Variáveis de ambiente (copie `.env.example` para `.env`):
 | `COOKIE_SECURE` | Use `true` quando servir por HTTPS. |
 | `PUBLIC_ACCESS` | `true` libera o acesso sem login (entra como o primeiro usuário). Só funciona em desenvolvimento; em produção é ignorado. |
 | `ALLOW_SIGNUP` | A primeira conta sempre pode ser criada; depois o cadastro fecha. Use `true` para permitir novas contas. |
+| `APP_TIMEZONE` | Fuso que decide quando o mês vira para abrir o mês novo sozinho (padrão `America/Sao_Paulo`). |
 
 O banco é um único arquivo SQLite. Para fazer backup, copie `data/financeflow.db`.
 
@@ -77,6 +78,8 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 **Compras parceladas.** Em qualquer tabela de despesa (inclusive a do cartão), *Compra parcelada* lança a compra com o valor total ou o da parcela, o número de parcelas e em qual parcela ela está neste mês (para compras feitas antes). Cada parcela vira uma linha no mês dela, com a etiqueta "3/12": os meses já abertos recebem na hora, os próximos quando forem iniciados (se a tabela não existir naquele mês, ela é criada). Os centavos que sobram da divisão vão para a 1ª parcela. Clicando na etiqueta dá para **encerrar o parcelamento**: somem a parcela do mês e as seguintes, e as anteriores ficam.
 
 **Mês novo sem recomeçar.** Ao abrir um mês vazio você escolhe: copiar o mês anterior (tabelas e lançamentos fixos, tudo volta como pendente e com as datas ajustadas), copiar só as tabelas, usar o modelo padrão ou começar em branco.
+
+**Mês novo automático.** Na virada do mês, o primeiro acesso ao app (em qualquer página) já abre o mês novo copiando o último mês usado, com as parcelas do mês lançadas, e a planilha mostra um aviso até alguém clicar em *Entendi*. Em *Conta → Mês novo automático* dá para copiar só as tabelas ou desligar. Sem nenhum mês anterior, a escolha de como começar continua com vocês. O mês vira pelo horário de Brasília (`APP_TIMEZONE`).
 
 **Visão anual.** Os 12 meses lado a lado, gráfico de receitas x despesas x cofrinho, saldo acumulado e a divisão por categoria.
 

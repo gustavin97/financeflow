@@ -3,14 +3,19 @@ import { destroySession, hashPassword, verifyPassword } from "@/lib/auth";
 import {
   deleteUser,
   findUserById,
+  getAutoMonth,
+  setAutoMonth,
   updateUserName,
   updateUserPassword,
 } from "@/lib/queries";
 import { accountDeleteSchema, accountPatchSchema } from "@/lib/schemas";
 
+export const GET = route(({ user }) => ({ autoMonth: getAutoMonth(user.id) }));
+
 export const PATCH = route(async ({ req, user }) => {
   const body = accountPatchSchema.parse(await readJson(req));
   if (body.name) updateUserName(user.id, body.name);
+  if (body.autoMonth) setAutoMonth(user.id, body.autoMonth);
   if (body.newPassword) {
     const row = findUserById(user.id);
     if (!body.currentPassword || !row || !(await verifyPassword(body.currentPassword, row.password_hash)))

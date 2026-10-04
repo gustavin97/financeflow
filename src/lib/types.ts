@@ -78,6 +78,8 @@ export interface Carry {
 export interface MonthPayload {
   ym: string;
   initialized: boolean;
+  /** mês de onde este foi copiado ao abrir sozinho (enquanto o aviso não é dispensado) */
+  autoFrom: string | null;
   previousYm: string | null;
   blocks: Block[];
   goals: GoalLite[];

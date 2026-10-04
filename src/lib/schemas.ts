@@ -37,6 +37,7 @@ export const accountPatchSchema = z.object({
     .min(8, "A nova senha precisa ter pelo menos 8 caracteres.")
     .max(100)
     .optional(),
+  autoMonth: z.enum(["copy", "structure", "off"]).optional(),
 });
 
 export const accountDeleteSchema = z.object({ password: z.string().min(1, "Informe sua senha.") });
@@ -46,6 +47,8 @@ export const extraColumnSchema = z.object({
   name: z.string().trim().min(1, "Dê um nome à coluna.").max(40, "Nome da coluna muito longo."),
   type: z.enum(["text", "number", "currency", "date"]),
 });
+
+export const monthPatchSchema = z.object({ dismissAuto: z.boolean().optional() });
 
 export const startMonthSchema = z.object({
   mode: z.enum(["default", "blank", "copy", "structure"]),

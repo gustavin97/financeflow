@@ -7,6 +7,18 @@ import { MembersEditor } from "@/components/MembersEditor";
 import { api, errMsg } from "@/lib/client";
 import type { Member, SessionUser } from "@/lib/types";
 
+type AutoMonth = "copy" | "structure" | "off";
+
+const AUTO_OPTIONS: { value: AutoMonth; title: string; text: string }[] = [
+  {
+    value: "copy",
+    title: "Copiar o mês anterior",
+    text: "Tabelas e lançamentos fixos (salário, aluguel, assinaturas) voltam como pendentes, com as datas no novo mês.",
+  },
+  { value: "structure", title: "Copiar só as tabelas", text: "Mesmas tabelas, colunas e limites, sem lançamentos." },
+  { value: "off", title: "Não abrir sozinho", text: "No mês novo, você escolhe como começar." },
+];
+
 type Flash = { kind: "ok" | "err"; text: string } | null;
 
 function Msg({ f }: { f: Flash }) {
@@ -21,9 +33,9 @@ function Msg({ f }: { f: Flash }) {
   );
 }
 
-function Panel({ title, text, children }: { title: string; text?: string; children: React.ReactNode }) {
+function Panel({ id, title, text, children }: { id?: string; title: string; text?: string; children: React.ReactNode }) {
   return (
-    <section className="panel">
+    <section id={id} className="panel scroll-mt-20">
       <div className="border-b border-grid bg-head px-4 py-2.5">
         <h2 className="text-[16px] font-semibold">{title}</h2>
         {text && <p className="text-[14.5px] text-muted">{text}</p>}
@@ -44,6 +56,8 @@ export default function AccountPage() {
   const [delPw, setDelPw] = useState("");
   const [delFlash, setDelFlash] = useState<Flash>(null);
   const [members, setMembers] = useState<Member[] | null>(null);
+  const [autoMonth, setAutoMonth] = useState<AutoMonth | null>(null);
+  const [autoFlash, setAutoFlash] = useState<Flash>(null);
 
   useEffect(() => {
     api<{ user: SessionUser }>("/api/auth/me").then((r) => {
@@ -51,7 +65,20 @@ export default function AccountPage() {
       setName(r.user.name);
     });
     api<Member[]>("/api/members").then(setMembers).catch(() => setMembers([]));
+    api<{ autoMonth: AutoMonth }>("/api/account").then((r) => setAutoMonth(r.autoMonth));
   }, []);
+
+  async function saveAutoMonth(mode: AutoMonth) {
+    const before = autoMonth;
+    setAutoMonth(mode);
+    try {
+      await api("/api/account", { method: "PATCH", body: { autoMonth: mode } });
+      setAutoFlash({ kind: "ok", text: "Preferência salva." });
+    } catch (err) {
+      setAutoMonth(before);
+      setAutoFlash({ kind: "err", text: errMsg(err) });
+    }
+  }
 
   async function saveName(e: React.FormEvent) {
     e.preventDefault();
@@ -111,6 +138,37 @@ export default function AccountPage() {
 
         <Panel title="Pessoas da casa" text="Quem divide as contas. Cada tabela pode ser de uma pessoa ou do conjunto.">
           {members ? <MembersEditor members={members} onChange={setMembers} /> : <div className="h-11" />}
+        </Panel>
+
+        <Panel
+          id="automacao"
+          title="Mês novo automático"
+          text="Na virada do mês, a planilha nova já fica pronta quando vocês abrirem o app. As parcelas do mês entram sozinhas."
+        >
+          <fieldset className="space-y-2" disabled={!autoMonth}>
+            <legend className="sr-only">Como abrir o mês novo</legend>
+            {AUTO_OPTIONS.map((o) => (
+              <label
+                key={o.value}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-grid px-3 py-2.5 hover:bg-brand-soft has-[:checked]:border-brand has-[:checked]:bg-brand-soft"
+              >
+                <input
+                  type="radio"
+                  name="auto-month"
+                  className="mt-1 accent-brand"
+                  checked={autoMonth === o.value}
+                  onChange={() => saveAutoMonth(o.value)}
+                />
+                <span>
+                  <span className="block text-[15.5px] font-semibold">{o.title}</span>
+                  <span className="block text-[14.5px] text-muted">{o.text}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <div className="mt-2 min-h-[22px]">
+            <Msg f={autoFlash} />
+          </div>
         </Panel>
 
         <Panel title="Senha">

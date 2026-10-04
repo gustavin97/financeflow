@@ -80,6 +80,11 @@ export function useMonth(ym: string) {
     }
   };
 
+  const dismissAuto = () => {
+    setData((d) => (d ? { ...d, autoFrom: null } : d));
+    api(`/api/months/${ym}`, { method: "PATCH", body: { dismissAuto: true } }).catch(fail);
+  };
+
   /* ---------- tabelas ---------- */
   const addBlock = async (input: NewBlock) => {
     const b = await api<Block>("/api/blocks", { body: { ym, ...input } });
@@ -200,6 +205,7 @@ export function useMonth(ym: string) {
     error,
     clearError: () => setError(null),
     start,
+    dismissAuto,
     addBlock,
     patchBlock,
     removeBlock,
