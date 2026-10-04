@@ -14,6 +14,7 @@ import { TotalTable } from "@/components/sheet/TotalTable";
 import { DistributionBar } from "@/components/sheet/DistributionBar";
 import { MonthTabs } from "@/components/sheet/MonthTabs";
 import { StartMonth } from "@/components/sheet/StartMonth";
+import { SurplusBanner } from "@/components/sheet/SurplusBanner";
 import { PeopleTable, SummaryStrip } from "@/components/sheet/SummaryStrip";
 import { useMonth } from "@/components/sheet/useMonth";
 import { addMonths, currentYm, isYm, ymLabel } from "@/lib/dates";
@@ -156,6 +157,14 @@ function MonthView({ ym }: { ym: string }) {
                   Entendi
                 </button>
               </div>
+            )}
+            {data.surplus && (
+              <SurplusBanner
+                key={`${data.surplus.ym}-${data.surplus.state}`}
+                info={data.surplus}
+                goals={data.goals}
+                onAction={m.surplus}
+              />
             )}
             <SummaryStrip s={summary} carry={data.carry} />
             <AlertsPanel alerts={alerts} />

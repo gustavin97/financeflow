@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   -- abrir o mês novo sozinho: 'copy', 'structure' ou 'off'
   auto_month    TEXT NOT NULL DEFAULT 'copy',
+  -- sobra do mês que fechou vai para o cofrinho: 'ask', 'auto' ou 'off'
+  surplus_mode  TEXT NOT NULL DEFAULT 'ask',
+  surplus_goal  TEXT,
+  surplus_pct   INTEGER NOT NULL DEFAULT 100,
   created_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -41,6 +45,11 @@ CREATE TABLE IF NOT EXISTS months (
   ym         TEXT NOT NULL,
   -- mês aberto sozinho a partir deste (aviso na planilha até ser dispensado)
   auto_from  TEXT,
+  -- sobra deste mês: NULL (não decidida), 'saved' ou 'skipped'
+  surplus_state TEXT,
+  surplus_entry TEXT,
+  -- aviso da sobra guardada sozinha já visto
+  surplus_seen  INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (user_id, ym)
 );
@@ -141,7 +150,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_inst ON entries(inst_id);
 `;
 
 /** Atualiza bancos criados antes das pessoas / tabelas de total / cartões / parcelas. */
-function migrate(raw: DatabaseSync) {
+function migrate(raw: Pick<DatabaseSync, "exec" | "prepare">) {
   const cols = (table: string) =>
     new Set((raw.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
 
@@ -182,6 +191,18 @@ function migrate(raw: DatabaseSync) {
     raw.exec("ALTER TABLE users ADD COLUMN auto_month TEXT NOT NULL DEFAULT 'copy'");
   if (!cols("months").has("auto_from")) raw.exec("ALTER TABLE months ADD COLUMN auto_from TEXT");
 
+  // sobra do mês para o cofrinho
+  if (!cols("users").has("surplus_mode")) {
+    raw.exec("ALTER TABLE users ADD COLUMN surplus_mode TEXT NOT NULL DEFAULT 'ask'");
+    raw.exec("ALTER TABLE users ADD COLUMN surplus_goal TEXT");
+    raw.exec("ALTER TABLE users ADD COLUMN surplus_pct INTEGER NOT NULL DEFAULT 100");
+  }
+  if (!cols("months").has("surplus_state")) {
+    raw.exec("ALTER TABLE months ADD COLUMN surplus_state TEXT");
+    raw.exec("ALTER TABLE months ADD COLUMN surplus_entry TEXT");
+    raw.exec("ALTER TABLE months ADD COLUMN surplus_seen INTEGER NOT NULL DEFAULT 0");
+  }
+
   // compras parceladas
   if (!entryCols.has("inst_id")) {
     raw.exec("ALTER TABLE entries ADD COLUMN inst_id TEXT REFERENCES installments(id) ON DELETE SET NULL");
@@ -207,6 +228,8 @@ export interface Db {
 declare global {
   // eslint-disable-next-line no-var
   var __financeFlowDb: Db | undefined;
+  // eslint-disable-next-line no-var
+  var __financeFlowSchema: string | undefined;
 }
 
 // node:sqlite devolve linhas com prototype nulo; o React não aceita isso ao
@@ -218,9 +241,7 @@ function open(): Db {
   const raw = new DatabaseSync(DB_PATH);
   raw.exec("PRAGMA journal_mode = WAL");
   raw.exec("PRAGMA foreign_keys = ON");
-  raw.exec(SCHEMA);
-  migrate(raw);
-  raw.exec(INDEXES);
+  ensureSchema(raw);
 
   // node:sqlite não tem transaction(); controlamos a profundidade à mão.
   let depth = 0;
@@ -262,7 +283,22 @@ function open(): Db {
   return db;
 }
 
+function ensureSchema(raw: Pick<DatabaseSync, "exec" | "prepare">) {
+  raw.exec(SCHEMA);
+  migrate(raw);
+  raw.exec(INDEXES);
+}
+
+// em desenvolvimento a conexão sobrevive às recargas do código: se o schema
+// mudou desde que ela foi aberta, roda a migração de novo (é idempotente)
+const SCHEMA_SIG = SCHEMA + INDEXES + migrate.toString();
+
 export function getDb(): Db {
-  if (!globalThis.__financeFlowDb) globalThis.__financeFlowDb = open();
+  if (!globalThis.__financeFlowDb) {
+    globalThis.__financeFlowDb = open();
+  } else if (globalThis.__financeFlowSchema !== SCHEMA_SIG) {
+    ensureSchema(globalThis.__financeFlowDb as unknown as Pick<DatabaseSync, "exec" | "prepare">);
+  }
+  globalThis.__financeFlowSchema = SCHEMA_SIG;
   return globalThis.__financeFlowDb;
 }

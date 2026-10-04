@@ -8,7 +8,8 @@ import { ApiError } from "./errors";
 import { DEFAULT_BLOCKS } from "./templates";
 import { GOAL_COLORS, MEMBER_COLORS } from "./kinds";
 import { remapRef } from "./calc";
-import { addMonths, daysInMonth, diffMonths, shiftDateToMonth } from "./dates";
+import { addMonths, currentYmIn, daysInMonth, diffMonths, monthRange, MONTHS_LONG, shiftDateToMonth } from "./dates";
+import { computeSummary } from "./summary";
 import { cleanPattern } from "./statement";
 import type {
   AnnualPayload,
@@ -26,6 +27,8 @@ import type {
   Member,
   MonthPayload,
   Status,
+  SurplusInfo,
+  SurplusMode,
 } from "./types";
 
 type Bind = string | number | null;
@@ -240,6 +243,8 @@ export function getMonth(userId: string, ym: string): MonthPayload {
     goals,
     members: listMembers(userId),
     carry: carryBefore(userId, ym),
+    // só o mês atual mostra a sobra do mês que fechou
+    surplus: initialized && ym === currentYmIn(APP_TIMEZONE) ? surplusInfo(userId, ym) : null,
   };
 }
 
@@ -395,6 +400,179 @@ export function autoStartMonth(userId: string, ym: string) {
 
 export function dismissAutoNotice(userId: string, ym: string) {
   getDb().prepare("UPDATE months SET auto_from = NULL WHERE user_id = ? AND ym = ?").run(userId, ym);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sobra do mês para o cofrinho                                        */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Quando um mês fecha no azul, a sobra (saldo previsto do mês) pode virar uma
+ * linha de cofrinho naquele mês, apontando para uma meta. Assim ela sai do
+ * saldo acumulado e passa a contar no progresso da meta. O estado fica em
+ * `months` (surplus_state) para não perguntar nem guardar duas vezes.
+ */
+
+export interface SurplusPrefs {
+  mode: SurplusMode;
+  goalId: string | null;
+  pct: number;
+}
+
+export function getSurplusPrefs(userId: string): SurplusPrefs {
+  const db = getDb();
+  const r = db.prepare("SELECT surplus_mode, surplus_goal, surplus_pct FROM users WHERE id = ?").get(userId) as
+    | Row
+    | undefined;
+  // a meta pode ter sido excluída depois de escolhida
+  const goal =
+    r?.surplus_goal && db.prepare("SELECT 1 FROM goals WHERE id = ? AND user_id = ?").get(r.surplus_goal, userId)
+      ? (r.surplus_goal as string)
+      : null;
+  return { mode: (r?.surplus_mode as SurplusMode) ?? "ask", goalId: goal, pct: r?.surplus_pct ?? 100 };
+}
+
+export function setSurplusPrefs(userId: string, patch: Partial<SurplusPrefs>) {
+  const db = getDb();
+  if (patch.mode !== undefined) db.prepare("UPDATE users SET surplus_mode = ? WHERE id = ?").run(patch.mode, userId);
+  if (patch.goalId !== undefined) {
+    assertGoal(userId, patch.goalId);
+    db.prepare("UPDATE users SET surplus_goal = ? WHERE id = ?").run(patch.goalId, userId);
+  }
+  if (patch.pct !== undefined) db.prepare("UPDATE users SET surplus_pct = ? WHERE id = ?").run(patch.pct, userId);
+}
+
+/** Último mês iniciado antes de `ym`. */
+function monthBefore(userId: string, ym: string): Row | undefined {
+  return getDb()
+    .prepare("SELECT * FROM months WHERE user_id = ? AND ym < ? ORDER BY ym DESC LIMIT 1")
+    .get(userId, ym) as Row | undefined;
+}
+
+/**
+ * Sobra de `ym`: saldo previsto do mês, sem passar do saldo acumulado
+ * (se os meses anteriores ficaram no vermelho, a sobra cobre isso primeiro).
+ */
+export function surplusAmount(userId: string, ym: string): number {
+  const m = getMonth(userId, ym);
+  const s = computeSummary(m.blocks, m.carry);
+  return Math.max(0, Math.min(s.balance, s.accumulated));
+}
+
+/** O que mostrar no mês atual sobre a sobra do mês anterior. */
+function surplusInfo(userId: string, ym: string): SurplusInfo | null {
+  const prev = monthBefore(userId, ym);
+  if (!prev) return null;
+  const prefs = getSurplusPrefs(userId);
+  if (prev.surplus_state === "saved") {
+    if (prev.surplus_seen) return null;
+    const e = getDb().prepare("SELECT amount, goal_id FROM entries WHERE id = ? AND user_id = ?").get(prev.surplus_entry, userId) as
+      | Row
+      | undefined;
+    return e ? { ym: prev.ym, state: "saved", amount: e.amount, goalId: e.goal_id ?? null, pct: prefs.pct } : null;
+  }
+  if (prev.surplus_state || prefs.mode !== "ask") return null;
+  const amount = surplusAmount(userId, prev.ym);
+  return amount > 0 ? { ym: prev.ym, state: "pending", amount, goalId: prefs.goalId, pct: prefs.pct } : null;
+}
+
+/** Guarda `pct`% da sobra de `ym` (mês já fechado) numa tabela de cofrinho do próprio mês. */
+export function saveSurplus(
+  userId: string,
+  ym: string,
+  opts: { goalId: string | null; pct: number },
+) {
+  const db = getDb();
+  if (ym >= currentYmIn(APP_TIMEZONE)) throw new ApiError("Este mês ainda não fechou.");
+  assertGoal(userId, opts.goalId);
+  return db.transaction(() => {
+    const month = db.prepare("SELECT surplus_state FROM months WHERE user_id = ? AND ym = ?").get(userId, ym) as
+      | Row
+      | undefined;
+    if (!month) throw new ApiError("Mês não encontrado.", 404);
+    if (month.surplus_state) throw new ApiError("A sobra deste mês já foi decidida.");
+    const amount = Math.round((surplusAmount(userId, ym) * opts.pct) / 100);
+    if (amount <= 0) throw new ApiError("Este mês não teve sobra.");
+
+    // de preferência uma tabela de cofrinho do conjunto; sem nenhuma, cria "Cofrinho"
+    let block = db
+      .prepare(
+        `SELECT id FROM blocks WHERE user_id = ? AND ym = ? AND kind = 'savings'
+          ORDER BY (member_id IS NULL) DESC, position LIMIT 1`,
+      )
+      .get(userId, ym) as Row | undefined;
+    if (!block) {
+      const pos = (
+        db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM blocks WHERE user_id = ? AND ym = ?").get(userId, ym) as Row
+      ).p as number;
+      block = {
+        id: insertBlock(userId, ym, {
+          name: "Cofrinho",
+          kind: "savings",
+          budgetType: "none",
+          budgetValue: 0,
+          columns: [],
+          position: pos,
+        }),
+      };
+    }
+    const pos = (
+      db.prepare("SELECT COALESCE(MAX(position), -1) + 1 AS p FROM entries WHERE block_id = ?").get(block.id) as Row
+    ).p as number;
+    const id = uid();
+    db.prepare(
+      `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, position)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+    ).run(
+      id,
+      block.id,
+      userId,
+      `Sobra de ${MONTHS_LONG[Number(ym.slice(5)) - 1]}`,
+      amount,
+      monthRange(ym).max,
+      "done",
+      opts.goalId,
+      pos,
+    );
+    db.prepare(
+      "UPDATE months SET surplus_state = 'saved', surplus_entry = ?, surplus_seen = 0 WHERE user_id = ? AND ym = ?",
+    ).run(id, userId, ym);
+    return { amount };
+  })();
+}
+
+/** Modo "guardar sozinho": na virada, guarda a sobra do último mês fechado. */
+export function autoSaveSurplus(userId: string, currentYm: string) {
+  const prefs = getSurplusPrefs(userId);
+  if (prefs.mode !== "auto") return;
+  const prev = monthBefore(userId, currentYm);
+  if (!prev || prev.surplus_state || surplusAmount(userId, prev.ym) <= 0) return;
+  saveSurplus(userId, prev.ym, { goalId: prefs.goalId, pct: prefs.pct });
+}
+
+export function skipSurplus(userId: string, ym: string) {
+  getDb()
+    .prepare("UPDATE months SET surplus_state = 'skipped' WHERE user_id = ? AND ym = ? AND surplus_state IS NULL")
+    .run(userId, ym);
+}
+
+/** Desfaz a sobra guardada: apaga a linha do cofrinho e não pergunta de novo. */
+export function undoSurplus(userId: string, ym: string) {
+  const db = getDb();
+  const m = db.prepare("SELECT surplus_state, surplus_entry FROM months WHERE user_id = ? AND ym = ?").get(userId, ym) as
+    | Row
+    | undefined;
+  if (!m || m.surplus_state !== "saved") return;
+  db.transaction(() => {
+    if (m.surplus_entry) db.prepare("DELETE FROM entries WHERE id = ? AND user_id = ?").run(m.surplus_entry, userId);
+    db.prepare(
+      "UPDATE months SET surplus_state = 'skipped', surplus_entry = NULL, surplus_seen = 1 WHERE user_id = ? AND ym = ?",
+    ).run(userId, ym);
+  })();
+}
+
+export function dismissSurplus(userId: string, ym: string) {
+  getDb().prepare("UPDATE months SET surplus_seen = 1 WHERE user_id = ? AND ym = ?").run(userId, ym);
 }
 
 /* ------------------------------------------------------------------ */

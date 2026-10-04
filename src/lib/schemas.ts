@@ -38,6 +38,9 @@ export const accountPatchSchema = z.object({
     .max(100)
     .optional(),
   autoMonth: z.enum(["copy", "structure", "off"]).optional(),
+  surplusMode: z.enum(["ask", "auto", "off"]).optional(),
+  surplusGoal: z.string().min(1).max(64).nullable().optional(),
+  surplusPct: z.number().int().min(1, "Porcentagem entre 1 e 100.").max(100, "Porcentagem entre 1 e 100.").optional(),
 });
 
 export const accountDeleteSchema = z.object({ password: z.string().min(1, "Informe sua senha.") });
@@ -49,6 +52,15 @@ export const extraColumnSchema = z.object({
 });
 
 export const monthPatchSchema = z.object({ dismissAuto: z.boolean().optional() });
+
+export const surplusActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("save"),
+    goalId: z.string().min(1).max(64).nullable(),
+    pct: z.number().int().min(1, "Porcentagem entre 1 e 100.").max(100, "Porcentagem entre 1 e 100."),
+  }),
+  z.object({ action: z.enum(["skip", "undo", "dismiss"]) }),
+]);
 
 export const startMonthSchema = z.object({
   mode: z.enum(["default", "blank", "copy", "structure"]),

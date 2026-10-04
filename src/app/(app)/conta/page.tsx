@@ -21,6 +21,14 @@ const AUTO_OPTIONS: { value: AutoMonth; title: string; text: string }[] = [
   { value: "off", title: "Não abrir sozinho", text: "No mês novo, você escolhe como começar." },
 ];
 
+type SurplusPrefs = { mode: "ask" | "auto" | "off"; goalId: string | null; pct: number };
+
+const SURPLUS_OPTIONS: { value: SurplusPrefs["mode"]; title: string; text: string }[] = [
+  { value: "ask", title: "Perguntar", text: "No mês novo, a planilha mostra quanto sobrou e vocês decidem quanto guardar e em qual meta." },
+  { value: "auto", title: "Guardar sozinho", text: "Na virada do mês a sobra vai direto para a meta escolhida. Dá para desfazer pelo aviso." },
+  { value: "off", title: "Não fazer nada", text: "A sobra continua no saldo acumulado, como antes." },
+];
+
 type Flash = { kind: "ok" | "err"; text: string } | null;
 
 function Msg({ f }: { f: Flash }) {
@@ -62,6 +70,35 @@ export default function AccountPage() {
   const [autoFlash, setAutoFlash] = useState<Flash>(null);
   const [rules, setRules] = useState<ImportRule[] | null>(null);
   const [rulesFlash, setRulesFlash] = useState<Flash>(null);
+  const [surplus, setSurplus] = useState<SurplusPrefs | null>(null);
+  const [pctText, setPctText] = useState("");
+  const [goals, setGoals] = useState<{ id: string; name: string }[]>([]);
+  const [surplusFlash, setSurplusFlash] = useState<Flash>(null);
+
+  useEffect(() => {
+    api<{ surplus: SurplusPrefs }>("/api/account").then((r) => {
+      setSurplus(r.surplus);
+      setPctText(String(r.surplus.pct));
+    });
+    api<{ id: string; name: string }[]>("/api/goals").then(setGoals).catch(() => setGoals([]));
+  }, []);
+
+  async function saveSurplus(patch: Partial<SurplusPrefs>) {
+    if (!surplus) return;
+    const before = surplus;
+    setSurplus({ ...surplus, ...patch });
+    try {
+      await api("/api/account", {
+        method: "PATCH",
+        body: { surplusMode: patch.mode, surplusGoal: patch.goalId, surplusPct: patch.pct },
+      });
+      setSurplusFlash({ kind: "ok", text: "Preferência salva." });
+    } catch (err) {
+      setSurplus(before);
+      setPctText(String(before.pct));
+      setSurplusFlash({ kind: "err", text: errMsg(err) });
+    }
+  }
 
   useEffect(() => {
     api<{ user: SessionUser }>("/api/auth/me").then((r) => {
@@ -197,6 +234,82 @@ export default function AccountPage() {
           </fieldset>
           <div className="mt-2 min-h-[22px]">
             <Msg f={autoFlash} />
+          </div>
+        </Panel>
+
+        <Panel
+          id="sobra"
+          title="Sobra do mês para o cofrinho"
+          text="Quando um mês fecha no azul, a sobra pode ir para uma meta. Ela vira uma linha no cofrinho do mês que fechou e sai do saldo acumulado."
+        >
+          <fieldset className="space-y-2" disabled={!surplus}>
+            <legend className="sr-only">O que fazer com a sobra</legend>
+            {SURPLUS_OPTIONS.map((o) => (
+              <label
+                key={o.value}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-grid px-3 py-2.5 hover:bg-brand-soft has-[:checked]:border-brand has-[:checked]:bg-brand-soft"
+              >
+                <input
+                  type="radio"
+                  name="surplus-mode"
+                  className="mt-1 accent-brand"
+                  checked={surplus?.mode === o.value}
+                  onChange={() => saveSurplus({ mode: o.value })}
+                />
+                <span>
+                  <span className="block text-[15.5px] font-semibold">{o.title}</span>
+                  <span className="block text-[14.5px] text-muted">{o.text}</span>
+                </span>
+              </label>
+            ))}
+            {surplus && surplus.mode !== "off" && (
+              <div className="grid gap-3 pt-1 sm:grid-cols-[1fr_140px]">
+                <div>
+                  <label className="label" htmlFor="surplus-goal">
+                    Meta {surplus.mode === "ask" ? "sugerida" : ""}
+                  </label>
+                  <select
+                    id="surplus-goal"
+                    className="field"
+                    value={surplus.goalId ?? ""}
+                    onChange={(e) => saveSurplus({ goalId: e.target.value || null })}
+                  >
+                    <option value="">Sem meta (só cofrinho)</option>
+                    {goals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label" htmlFor="surplus-pct">
+                    Quanto da sobra
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="surplus-pct"
+                      className="field pr-8 text-right tabular-nums"
+                      inputMode="numeric"
+                      value={pctText}
+                      onChange={(e) => setPctText(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                      onBlur={() => {
+                        const n = Number(pctText);
+                        if (n === surplus.pct) return;
+                        if (!Number.isInteger(n) || n < 1 || n > 100) {
+                          setPctText(String(surplus.pct));
+                          setSurplusFlash({ kind: "err", text: "Use uma porcentagem entre 1 e 100." });
+                        } else saveSurplus({ pct: n });
+                      }}
+                    />
+                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted">%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </fieldset>
+          <div className="mt-2 min-h-[22px]">
+            <Msg f={surplusFlash} />
           </div>
         </Panel>
 

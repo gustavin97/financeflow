@@ -200,6 +200,19 @@ export function useMonth(ym: string) {
     return r;
   };
 
+  /* ---------- sobra do mês que fechou (mexe no mês anterior e no acumulado: recarrega) ---------- */
+  const surplus = async (body: { action: "save"; goalId: string | null; pct: number } | { action: "skip" | "undo" | "dismiss" }) => {
+    const from = data?.surplus?.ym;
+    if (!from) return;
+    if (body.action === "skip" || body.action === "dismiss") setData((d) => (d ? { ...d, surplus: null } : d));
+    try {
+      await api(`/api/months/${from}/surplus`, { body });
+    } catch (e) {
+      setError(errMsg(e));
+    }
+    await load();
+  };
+
   /* ---------- pessoas (a lista é editada no diálogo; aqui só refletimos) ---------- */
   const setMembers = (members: Member[]) => {
     setData((d) => {
@@ -230,5 +243,6 @@ export function useMonth(ym: string) {
     addInstallment,
     removeInstallment,
     importStatement,
+    surplus,
   };
 }

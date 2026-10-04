@@ -88,6 +88,8 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 - **Conta x fatura**: no extrato da conta, só entram por padrão os lançamentos do mês aberto. Na fatura do cartão entram todas as compras; as que vão para outras tabelas de despesa ficam como *pagas com o cartão*. Pagamentos da fatura e estornos ficam de fora, a menos que você escolha uma tabela.
 - Saídas viram despesas e entradas viram receitas, já marcadas como pagas/recebidas. Uma entrada lançada numa tabela de despesa (um estorno) entra negativa e abate o total.
 
+**Sobra do mês para o cofrinho.** Quando um mês fecha no azul, a sobra (saldo previsto do mês, sem passar do saldo acumulado) pode ir para uma meta: vira a linha *Sobra de setembro* numa tabela de cofrinho do conjunto naquele mês (se não houver, a tabela *Cofrinho* é criada), conta no progresso da meta e sai do saldo acumulado. Em *Conta → Sobra do mês* você escolhe **perguntar** (o mês atual mostra quanto sobrou, com a meta e a porcentagem para confirmar), **guardar sozinho** na virada do mês (com aviso e botão de desfazer) ou não fazer nada. Cada mês só é guardado uma vez.
+
 **Visão anual.** Os 12 meses lado a lado, gráfico de receitas x despesas x cofrinho, saldo acumulado e a divisão por categoria.
 
 ## Dicas de uso na planilha

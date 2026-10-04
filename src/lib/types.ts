@@ -75,6 +75,21 @@ export interface Carry {
   realized: number;
 }
 
+export type SurplusMode = "ask" | "auto" | "off";
+
+/** Sobra do último mês fechado, mostrada no mês atual. */
+export interface SurplusInfo {
+  /** mês que fechou */
+  ym: string;
+  /** pending: esperando a decisão; saved: guardada (aviso ainda não visto) */
+  state: "pending" | "saved";
+  /** pending: sobra disponível; saved: valor guardado */
+  amount: number;
+  /** preferências da conta (pending) ou meta usada (saved) */
+  goalId: string | null;
+  pct: number;
+}
+
 export interface MonthPayload {
   ym: string;
   initialized: boolean;
@@ -85,6 +100,8 @@ export interface MonthPayload {
   goals: GoalLite[];
   members: Member[];
   carry: Carry;
+  /** só no mês atual, quando há sobra do mês anterior para decidir ou aviso para ver */
+  surplus: SurplusInfo | null;
 }
 
 export interface GoalStat {

@@ -1,6 +1,6 @@
 import { ApiError, readJson, route } from "@/lib/api";
 import { currentYmIn, isYm } from "@/lib/dates";
-import { APP_TIMEZONE, autoStartMonth, dismissAutoNotice, getMonth, initMonth } from "@/lib/queries";
+import { APP_TIMEZONE, autoSaveSurplus, autoStartMonth, dismissAutoNotice, getMonth, initMonth } from "@/lib/queries";
 import { monthPatchSchema, startMonthSchema } from "@/lib/schemas";
 
 type P = { ym: string };
@@ -8,7 +8,10 @@ type P = { ym: string };
 export const GET = route<P>(({ user, params }) => {
   if (!isYm(params.ym)) throw new ApiError("Mês inválido.");
   // a aba pode ter ficado aberta na virada do mês
-  if (params.ym === currentYmIn(APP_TIMEZONE)) autoStartMonth(user.id, params.ym);
+  if (params.ym === currentYmIn(APP_TIMEZONE)) {
+    autoStartMonth(user.id, params.ym);
+    autoSaveSurplus(user.id, params.ym);
+  }
   return getMonth(user.id, params.ym);
 });
 
