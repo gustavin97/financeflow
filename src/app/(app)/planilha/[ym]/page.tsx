@@ -272,13 +272,13 @@ function SheetSkeleton() {
     <div className="space-y-4" aria-busy="true" aria-label="Carregando">
       <div className="grid grid-cols-2 kpis gap-3 lg:grid-cols-5">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-[92px] bg-white" />
+          <div key={i} className="skeleton h-[92px] bg-white" />
         ))}
       </div>
-      <div className="h-[92px] rounded-xl border border-line bg-white" />
+      <div className="skeleton h-[92px] rounded-xl border border-line bg-white" />
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="h-64 rounded-xl border border-line bg-white" />
-        <div className="h-64 rounded-xl border border-line bg-white" />
+        <div className="skeleton h-64 rounded-xl border border-line bg-white" />
+        <div className="skeleton h-64 rounded-xl border border-line bg-white" />
       </div>
     </div>
   );

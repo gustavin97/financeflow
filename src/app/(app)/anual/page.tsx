@@ -76,7 +76,7 @@ export default function AnnualPage() {
           {error}
         </p>
       )}
-      {!data && !error && <div className="h-72 rounded-xl border border-line bg-white" aria-busy="true" />}
+      {!data && !error && <div className="skeleton h-72 rounded-xl border border-line bg-white" aria-busy="true" />}
 
       {data && (
         <div className="space-y-4">

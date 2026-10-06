@@ -55,6 +55,29 @@ body {
     overflow-wrap: anywhere;
   }
 
+  /* espaço reservado enquanto os dados carregam: um brilho passa da esquerda para a direita */
+  .skeleton {
+    @apply relative overflow-hidden;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(16, 124, 65, 0.06), transparent);
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes shimmer {
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after {
+      animation: none;
+    }
+  }
+
   /* ---------- botões ---------- */
   .btn {
     @apply inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-line bg-white px-4 text-[15px] font-medium text-ink shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition-colors hover:bg-head;

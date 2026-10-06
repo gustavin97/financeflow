@@ -155,7 +155,7 @@ export default function DashboardPage() {
           {error}
         </p>
       )}
-      {!data && !error && <div className="h-80 rounded-xl border border-line bg-white" aria-busy="true" />}
+      {!data && !error && <div className="skeleton h-80 rounded-xl border border-line bg-white" aria-busy="true" />}
 
       {data && !cur && (
         <div className="panel px-5 py-8 text-center">

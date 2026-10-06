@@ -86,7 +86,7 @@ export default function GoalsPage() {
         </p>
       )}
 
-      {goals === null && !error && <div className="h-40 rounded-xl border border-line bg-white" aria-busy="true" />}
+      {goals === null && !error && <div className="skeleton h-40 rounded-xl border border-line bg-white" aria-busy="true" />}
 
       {goals && goals.length === 0 && (
         <div className="panel px-6 py-12 text-center">
