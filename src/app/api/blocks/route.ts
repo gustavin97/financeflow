@@ -4,5 +4,5 @@ import { blockCreateSchema } from "@/lib/schemas";
 
 export const POST = route(async ({ req, user }) => {
   const body = blockCreateSchema.parse(await readJson(req));
-  return json(createBlock(user.id, body), 201);
+  return json(await createBlock(user.id, body), 201);
 });

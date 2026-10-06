@@ -4,6 +4,7 @@
  * Login: demo@financeflow.app  |  Senha: demo12345
  */
 import bcrypt from "bcryptjs";
+import { closeDb } from "../src/lib/db";
 import { addMonths } from "../src/lib/dates";
 import {
   createBlock,
@@ -38,22 +39,22 @@ interface Plan {
 const vary = (base: number, offset: number, pct: number) => Math.round(base * (1 + pct * offset));
 
 async function main() {
-  const existing = findUserByEmail(EMAIL);
-  if (existing) deleteUser(existing.id);
+  const existing = await findUserByEmail(EMAIL);
+  if (existing) await deleteUser(existing.id);
 
-  const user = createUser("Ana e Bruno", EMAIL, await bcrypt.hash(PASSWORD, 10));
+  const user = await createUser("Ana e Bruno", EMAIL, await bcrypt.hash(PASSWORD, 10));
   const uid = user.id;
-  const ana = createMember(uid, { name: "Ana" });
-  const bruno = createMember(uid, { name: "Bruno" });
+  const ana = await createMember(uid, { name: "Ana" });
+  const bruno = await createMember(uid, { name: "Bruno" });
   const who = { ana: ana.id, bruno: bruno.id };
 
   const now = new Date();
   const ym0 = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const today = now.getDate();
 
-  const apt = createGoal(uid, { name: "Entrada do apartamento", targetAmount: 8_000_000, targetMonth: addMonths(ym0, 40), color: "#1d5fbf" });
-  const car = createGoal(uid, { name: "Carro", targetAmount: 4_500_000, targetMonth: addMonths(ym0, 28), color: "#d9822b" });
-  const trip = createGoal(uid, { name: "Viagem", targetAmount: 800_000, targetMonth: addMonths(ym0, 12), color: "#8a4fa3" });
+  const apt = await createGoal(uid, { name: "Entrada do apartamento", targetAmount: 8_000_000, targetMonth: addMonths(ym0, 40), color: "#1d5fbf" });
+  const car = await createGoal(uid, { name: "Carro", targetAmount: 4_500_000, targetMonth: addMonths(ym0, 28), color: "#d9822b" });
+  const trip = await createGoal(uid, { name: "Viagem", targetAmount: 800_000, targetMonth: addMonths(ym0, 12), color: "#8a4fa3" });
 
   const plans: Plan[] = [
     {
@@ -173,36 +174,36 @@ async function main() {
 
   for (const offset of [-2, -1, 0]) {
     const ym = addMonths(ym0, offset);
-    initMonth(uid, ym, "blank");
+    await initMonth(uid, ym, "blank");
     const status = (day: number) => (offset < 0 || day <= today ? "done" : "pending");
 
     for (const p of plans) {
-      const block = createBlock(uid, {
+      const block = await createBlock(uid, {
         ym,
         name: p.name,
         kind: p.kind,
         memberId: p.owner ? who[p.owner] : null,
         columns: (p.columns ?? []).map((c, i) => ({ id: `c_${i}${Math.random().toString(36).slice(2, 7)}`, ...c })),
       });
-      if (p.percent) updateBlock(uid, block.id, { budgetType: "percent", budgetValue: p.percent });
+      if (p.percent) await updateBlock(uid, block.id, { budgetType: "percent", budgetValue: p.percent });
       for (const [desc, amount, day, extra] of p.rows(offset)) {
         const date = `${ym}-${String(day).padStart(2, "0")}`;
-        const e = createEntry(uid, block.id, { description: desc, amount, date, status: status(day) });
+        const e = await createEntry(uid, block.id, { description: desc, amount, date, status: status(day) });
         if (extra) {
           const mapped: Record<string, string | null> = {};
           for (const col of block.columns) if (extra[col.name] !== undefined) mapped[col.id] = extra[col.name] || null;
-          updateEntry(uid, e.id, { extra: mapped });
+          await updateEntry(uid, e.id, { extra: mapped });
         }
       }
     }
 
-    const savings = createBlock(uid, { ym, name: "Economias", kind: "savings", memberId: null });
-    updateBlock(uid, savings.id, { budgetType: "percent", budgetValue: 10 });
+    const savings = await createBlock(uid, { ym, name: "Economias", kind: "savings", memberId: null });
+    await updateBlock(uid, savings.id, { budgetType: "percent", budgetValue: 10 });
     for (const [desc, amount, goalId] of savingsPlan)
-      createEntry(uid, savings.id, { description: desc, amount, date: `${ym}-05`, status: status(5), goalId });
+      await createEntry(uid, savings.id, { description: desc, amount, date: `${ym}-05`, status: status(5), goalId });
 
     // tabelas de total: juntam o montante do casal
-    createBlock(uid, {
+    await createBlock(uid, {
       ym,
       name: "Renda do casal",
       kind: "total",
@@ -211,7 +212,7 @@ async function main() {
         { description: "Receitas de Bruno", ref: `kind:income:${bruno.id}`, sign: 1 },
       ],
     });
-    createBlock(uid, {
+    await createBlock(uid, {
       ym,
       name: "Sobra do casal",
       kind: "total",
@@ -226,7 +227,9 @@ async function main() {
   console.log(`\nCasal de demonstração criado.\n  E-mail: ${EMAIL}\n  Senha:  ${PASSWORD}\n`);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .then(() => closeDb())
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });

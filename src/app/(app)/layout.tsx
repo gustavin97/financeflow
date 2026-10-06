@@ -10,13 +10,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // virou o mês: abre o novo antes de qualquer página (painel e anual também o veem)
   const ym = currentYmIn(APP_TIMEZONE);
   try {
-    autoStartMonth(user.id, ym);
+    await autoStartMonth(user.id, ym);
   } catch (err) {
     // é uma conveniência: se falhar, a pessoa ainda escolhe como começar o mês
     console.error("Falha ao abrir o mês sozinho:", err);
   }
   try {
-    autoSaveSurplus(user.id, ym);
+    await autoSaveSurplus(user.id, ym);
   } catch (err) {
     console.error("Falha ao guardar a sobra do mês:", err);
   }

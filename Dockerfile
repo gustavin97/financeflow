@@ -1,5 +1,5 @@
 # Finance Flow - imagem de produção
-# Node 22.5+ por causa do SQLite embutido (node:sqlite); nenhuma dependência nativa.
+# Banco no Supabase: passe DATABASE_URL ao rodar o container.
 
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
@@ -19,13 +19,12 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    DATABASE_PATH=/app/data/financeflow.db \
     COOKIE_SECURE=true \
     APP_TIMEZONE=America/Sao_Paulo
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
-# banco, segredo da sessão e backups ficam aqui: monte um volume persistente
+# segredo da sessão e backups ficam aqui: monte um volume persistente
 RUN mkdir -p /app/data && chown node:node /app/data
 VOLUME /app/data
 USER node

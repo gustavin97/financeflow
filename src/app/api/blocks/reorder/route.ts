@@ -4,6 +4,6 @@ import { reorderSchema } from "@/lib/schemas";
 
 export const POST = route(async ({ req, user }) => {
   const { ym, ids } = reorderSchema.parse(await readJson(req));
-  reorderBlocks(user.id, ym, ids);
+  await reorderBlocks(user.id, ym, ids);
   return { ok: true };
 });

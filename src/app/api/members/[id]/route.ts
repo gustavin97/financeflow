@@ -5,11 +5,11 @@ import { memberPatchSchema } from "@/lib/schemas";
 type P = { id: string };
 
 export const PATCH = route<P>(async ({ req, user, params }) => {
-  updateMember(user.id, params.id, memberPatchSchema.parse(await readJson(req)));
+  await updateMember(user.id, params.id, memberPatchSchema.parse(await readJson(req)));
   return { ok: true };
 });
 
-export const DELETE = route<P>(({ user, params }) => {
-  deleteMember(user.id, params.id);
+export const DELETE = route<P>(async ({ user, params }) => {
+  await deleteMember(user.id, params.id);
   return { ok: true };
 });

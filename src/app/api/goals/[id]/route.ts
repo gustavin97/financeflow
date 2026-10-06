@@ -5,11 +5,11 @@ import { goalPatchSchema } from "@/lib/schemas";
 type P = { id: string };
 
 export const PATCH = route<P>(async ({ req, user, params }) => {
-  updateGoal(user.id, params.id, goalPatchSchema.parse(await readJson(req)));
+  await updateGoal(user.id, params.id, goalPatchSchema.parse(await readJson(req)));
   return { ok: true };
 });
 
-export const DELETE = route<P>(({ user, params }) => {
-  deleteGoal(user.id, params.id);
+export const DELETE = route<P>(async ({ user, params }) => {
+  await deleteGoal(user.id, params.id);
   return { ok: true };
 });

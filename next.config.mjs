@@ -5,6 +5,8 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // build enxuto para produção (Docker): .next/standalone com só o necessário
   output: "standalone",
+  // driver do Postgres: carregado do node_modules, sem passar pelo bundler
+  serverExternalPackages: ["pg"],
   async headers() {
     return [
       {

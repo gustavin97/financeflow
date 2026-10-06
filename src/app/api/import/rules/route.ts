@@ -1,4 +1,4 @@
 import { route } from "@/lib/api";
 import { listImportRules } from "@/lib/queries";
 
-export const GET = route(({ user }) => listImportRules(user.id));
+export const GET = route(async ({ user }) => await listImportRules(user.id));

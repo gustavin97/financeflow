@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { DB_PATH, getDb } from "./db";
+import { DATA_DIR, getDb } from "./db";
 import type { SessionUser } from "./types";
 
 export const COOKIE_NAME = "ff_session";
@@ -15,9 +15,9 @@ const MAX_AGE = 60 * 60 * 24 * 30; // 30 dias
 export const PUBLIC_ACCESS = process.env.PUBLIC_ACCESS === "true" && process.env.NODE_ENV !== "production";
 
 // Novas contas: o primeiro cadastro sempre é liberado; depois, só com ALLOW_SIGNUP=true.
-export function signupOpen(): boolean {
+export async function signupOpen(): Promise<boolean> {
   if (process.env.ALLOW_SIGNUP === "true") return true;
-  return !getDb().prepare("SELECT 1 FROM users LIMIT 1").get();
+  return !(await getDb().prepare("SELECT 1 FROM users LIMIT 1").get());
 }
 
 let cachedSecret: Uint8Array | null = null;
@@ -29,8 +29,8 @@ function getSecret(): Uint8Array {
     cachedSecret = new TextEncoder().encode(fromEnv);
     return cachedSecret;
   }
-  // Sem AUTH_SECRET: gera um segredo aleatório e mantém em disco (ao lado do banco).
-  const file = path.join(path.dirname(DB_PATH), ".auth-secret");
+  // Sem AUTH_SECRET: gera um segredo aleatório e mantém em disco (pasta data).
+  const file = path.join(DATA_DIR, ".auth-secret");
   let secret: string;
   try {
     secret = fs.readFileSync(file, "utf8").trim();
@@ -46,11 +46,11 @@ function getSecret(): Uint8Array {
 export const hashPassword = (pw: string) => bcrypt.hash(pw, 10);
 export const verifyPassword = (pw: string, hash: string) => bcrypt.compare(pw, hash);
 
-function getPublicAccessUser(): SessionUser | null {
+async function getPublicAccessUser(): Promise<SessionUser | null> {
   if (!PUBLIC_ACCESS) return null;
-  const user = getDb()
+  const user = (await getDb()
     .prepare("SELECT id, name, email FROM users ORDER BY created_at LIMIT 1")
-    .get() as SessionUser | undefined;
+    .get()) as SessionUser | undefined;
   return user ?? null;
 }
 
@@ -83,9 +83,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (!payload.sub) return null;
-    const user = getDb()
+    const user = (await getDb()
       .prepare("SELECT id, name, email FROM users WHERE id = ?")
-      .get(payload.sub) as SessionUser | undefined;
+      .get(payload.sub)) as SessionUser | undefined;
     return user ?? getPublicAccessUser();
   } catch {
     return getPublicAccessUser();

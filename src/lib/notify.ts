@@ -10,18 +10,15 @@ import { getDb } from "./db";
 import { mailConfigured, sendMail } from "./mailer";
 import { APP_TIMEZONE, getMonth } from "./queries";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type Row = Record<string, any>;
-
 // contas e faturas vencidas/vencendo e falta de caixa voltam a avisar a cada dia
 const DAILY = new Set(["overdue", "due-soon", "cash"]);
 const daily = (id: string) => DAILY.has(id) || id.startsWith("card-due-");
 
 /** Alertas (perigo e atenção) do mês atual, cada um com a sua "impressão digital". */
-export function currentAlerts(userId: string) {
+export async function currentAlerts(userId: string) {
   const { date: today } = nowIn(APP_TIMEZONE);
   const ym = today.slice(0, 7);
-  const m = getMonth(userId, ym);
+  const m = await getMonth(userId, ym);
   if (!m.initialized) return { ym, alerts: [] as (FinAlert & { fp: string })[] };
   const calc = buildCalc(m.blocks, m.members, m.carry);
   const alerts = monthAlerts({ ym, blocks: m.blocks, members: m.members, carry: m.carry, calc, today })
@@ -85,20 +82,26 @@ function render(name: string, ym: string, alerts: (FinAlert & { fresh: boolean }
  */
 export async function sendDigest(userId: string, opts: { force?: boolean } = {}) {
   const db = getDb();
-  const user = db.prepare("SELECT name, email FROM users WHERE id = ?").get(userId) as Row | undefined;
+  const user = await db.prepare("SELECT name, email FROM users WHERE id = ?").get(userId);
   if (!user) return { sent: false, count: 0 };
-  const { ym, alerts } = currentAlerts(userId);
-  const seenSt = db.prepare("SELECT 1 FROM alert_sent WHERE user_id = ? AND fp = ?");
-  const list = alerts.map((a) => ({ ...a, fresh: !seenSt.get(userId, a.fp) }));
+  const { ym, alerts } = await currentAlerts(userId);
+  const seen = new Set(
+    (
+      await db
+        .prepare("SELECT fp FROM alert_sent WHERE user_id = ? AND fp = ANY(?::text[])")
+        .all(userId, alerts.map((a) => a.fp))
+    ).map((r) => r.fp as string),
+  );
+  const list = alerts.map((a) => ({ ...a, fresh: !seen.has(a.fp) }));
   if (!opts.force && !list.some((a) => a.fresh)) return { sent: false, count: alerts.length };
 
   await sendMail({ to: user.email, ...render(user.name, ym, list) });
 
-  const mark = db.prepare("INSERT OR IGNORE INTO alert_sent (user_id, fp) VALUES (?, ?)");
-  db.transaction(() => {
-    for (const a of list) mark.run(userId, a.fp);
-    db.prepare("DELETE FROM alert_sent WHERE user_id = ? AND sent_at < datetime('now', '-120 days')").run(userId);
-  })();
+  const mark = db.prepare("INSERT INTO alert_sent (user_id, fp) VALUES (?, ?) ON CONFLICT DO NOTHING");
+  await db.transaction(async () => {
+    for (const a of list) await mark.run(userId, a.fp);
+    await db.prepare("DELETE FROM alert_sent WHERE user_id = ? AND sent_at < now() - interval '120 days'").run(userId);
+  });
   return { sent: true, count: alerts.length };
 }
 
@@ -107,12 +110,12 @@ export async function runDueDigests() {
   if (!mailConfigured()) return;
   const { date, hour } = nowIn(APP_TIMEZONE);
   const db = getDb();
-  const due = db
+  const due = await db
     .prepare("SELECT id FROM users WHERE email_alerts = 1 AND email_hour <= ? AND (email_last IS NULL OR email_last < ?)")
-    .all(hour, date) as Row[];
+    .all(hour, date);
   for (const u of due) {
     // marca antes de enviar: se o SMTP falhar, não fica tentando a cada poucos minutos
-    db.prepare("UPDATE users SET email_last = ? WHERE id = ?").run(date, u.id);
+    await db.prepare("UPDATE users SET email_last = ? WHERE id = ?").run(date, u.id);
     try {
       await sendDigest(u.id);
     } catch (err) {

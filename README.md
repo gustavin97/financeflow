@@ -6,12 +6,18 @@ Todo mês você lança o salário, as contas da casa, o cartão, as compras onli
 
 ## Como rodar
 
-Requisitos: **Node 22.5 ou superior** (usa o SQLite embutido do Node, `node:sqlite`). Nenhuma dependência nativa: não precisa de Python nem das Build Tools do Visual Studio.
+Requisitos: **Node 22.5 ou superior** e um projeto no **Supabase** (Postgres).
+
+1. No Supabase, abra o **SQL Editor**, cole o conteúdo de `supabase/schema.sql` e clique em **Run**.
+2. Em **Connect** (botão no topo do projeto), copie a URI do **Session pooler** e coloque no `.env` como `DATABASE_URL`, trocando `[YOUR-PASSWORD]` pela senha do banco.
+3. Rode:
 
 ```bash
 npm install
 npm run dev
 ```
+
+Já usava a versão com SQLite? `npm run migrate:sqlite` copia os dados de `data/financeflow.db` para o Supabase.
 
 Abra http://localhost:3000 e crie uma conta.
 
@@ -38,7 +44,8 @@ Variáveis de ambiente (copie `.env.example` para `.env`):
 | Variável | Para que serve |
 | --- | --- |
 | `AUTH_SECRET` | Segredo que assina a sessão (JWT). Em produção use um valor longo e aleatório: `openssl rand -base64 48`. Se ficar vazio, um segredo é gerado em `data/.auth-secret`. |
-| `DATABASE_PATH` | Caminho do arquivo SQLite. Padrão: `./data/financeflow.db`. |
+| `DATABASE_URL` | Conexão com o Postgres do Supabase (Connect → Session pooler). Obrigatória. |
+| `DATABASE_POOL_MAX` | Máximo de conexões abertas ao mesmo tempo (padrão 5). |
 | `COOKIE_SECURE` | Use `true` quando servir por HTTPS. |
 | `PUBLIC_ACCESS` | `true` libera o acesso sem login (entra como o primeiro usuário). Só funciona em desenvolvimento; em produção é ignorado. |
 | `ALLOW_SIGNUP` | A primeira conta sempre pode ser criada; depois o cadastro fecha. Use `true` para permitir novas contas. |
@@ -47,7 +54,9 @@ Variáveis de ambiente (copie `.env.example` para `.env`):
 | `MAIL_FROM` | Remetente dos e-mails (padrão: "Finance Flow <SMTP_USER>"). |
 | `APP_URL` | Endereço do app usado no link do e-mail (padrão `http://localhost:3000`). |
 
-O banco é um único arquivo SQLite. Para fazer backup, copie `data/financeflow.db`.
+O banco fica no Supabase. Em produção (ou com `BACKUP_DIR` definido), o app também guarda uma cópia diária em JSON em `data/backups` (os últimos `BACKUP_KEEP` dias, padrão 14).
+
+O RLS fica ligado em todas as tabelas, sem políticas: a chave pública (`anon`) do Supabase não lê nem grava nada. Só o servidor do app acessa o banco, pela `DATABASE_URL`. Nunca coloque essa URL (nem a `service_role`) no código do navegador ou no GitHub.
 
 ## Como o sistema funciona
 
@@ -108,7 +117,7 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · SQLite embutido do Node (`node:sqlite`, sem dependência nativa) · `bcryptjs` · `jose` (JWT em cookie httpOnly) · `zod` · `nodemailer`.
+Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · Postgres no Supabase (`pg`) · `bcryptjs` · `jose` (JWT em cookie httpOnly) · `zod` · `nodemailer`.
 
 ## Estrutura
 
@@ -120,12 +129,14 @@ src/
     api/                            rotas (auth, months, blocks, entries, installments, import, goals, annual, export, account)
   components/sheet/                 tabela editável, resumo, barra de distribuição, abas de mês
   lib/
-    db.ts                           conexão e schema SQLite
+    db.ts                           conexão com o Postgres (Supabase)
     queries.ts                      toda a regra de dados (sempre filtrada pelo usuário)
     statement.ts                    leitura de extratos OFX/CSV e regras de categorização
     summary.ts, money.ts, dates.ts  cálculos e formatação
 scripts/seed.ts                     dados de demonstração
-data/                               banco SQLite (criado na primeira execução)
+scripts/migrate-sqlite.ts           copia o banco SQLite antigo para o Supabase
+supabase/schema.sql                 tabelas do banco (rodar no SQL Editor)
+data/                               segredo da sessão e backups locais
 ```
 
 ## Scripts
@@ -135,6 +146,7 @@ data/                               banco SQLite (criado na primeira execução)
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` / `npm run start` | Build e servidor de produção |
 | `npm run seed` | Cria o usuário e os dados de demonstração |
+| `npm run migrate:sqlite` | Copia os dados do SQLite antigo (`data/financeflow.db`) para o Supabase |
 | `npm run typecheck` | Checagem de tipos |
 
 ## Segurança
@@ -144,4 +156,4 @@ data/                               banco SQLite (criado na primeira execução)
 - Todas as consultas ao banco são filtradas pelo usuário logado.
 - Validação de entrada com zod em todas as rotas.
 
-Se for publicar para várias pessoas, considere migrar o SQLite para Postgres e mover o limite de tentativas de login para um armazenamento compartilhado (Redis, por exemplo).
+Se for publicar para várias pessoas, considere mover o limite de tentativas de login para um armazenamento compartilhado (Redis, por exemplo).

@@ -4,5 +4,5 @@ import { entryCreateSchema } from "@/lib/schemas";
 
 export const POST = route(async ({ req, user }) => {
   const { blockId, ...init } = entryCreateSchema.parse(await readJson(req));
-  return json(createEntry(user.id, blockId, init), 201);
+  return json(await createEntry(user.id, blockId, init), 201);
 });

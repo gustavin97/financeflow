@@ -2,11 +2,11 @@ import { json, readJson, route } from "@/lib/api";
 import { createGoal, goalStats } from "@/lib/queries";
 import { goalCreateSchema } from "@/lib/schemas";
 
-export const GET = route(({ user }) => goalStats(user.id));
+export const GET = route(async ({ user }) => await goalStats(user.id));
 
 export const POST = route(async ({ req, user }) => {
   const body = goalCreateSchema.parse(await readJson(req));
-  const id = createGoal(user.id, {
+  const id = await createGoal(user.id, {
     name: body.name,
     targetAmount: body.targetAmount,
     targetMonth: body.targetMonth ?? null,

@@ -9,9 +9,9 @@ type P = { ym: string };
 export const POST = route<P>(async ({ req, user, params }) => {
   if (!isYm(params.ym)) throw new ApiError("Mês inválido.");
   const body = surplusActionSchema.parse(await readJson(req));
-  if (body.action === "save") return saveSurplus(user.id, params.ym, { goalId: body.goalId, pct: body.pct });
-  if (body.action === "skip") skipSurplus(user.id, params.ym);
-  else if (body.action === "undo") undoSurplus(user.id, params.ym);
-  else dismissSurplus(user.id, params.ym);
+  if (body.action === "save") return await saveSurplus(user.id, params.ym, { goalId: body.goalId, pct: body.pct });
+  if (body.action === "skip") await skipSurplus(user.id, params.ym);
+  else if (body.action === "undo") await undoSurplus(user.id, params.ym);
+  else await dismissSurplus(user.id, params.ym);
   return { ok: true };
 });

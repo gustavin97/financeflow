@@ -4,8 +4,8 @@ import { SignupForm } from "./SignupForm";
 
 export const dynamic = "force-dynamic";
 
-export default function SignupPage() {
-  if (signupOpen()) return <SignupForm />;
+export default async function SignupPage() {
+  if (await signupOpen()) return <SignupForm />;
   return (
     <>
       <h2 className="text-[32px] font-semibold tracking-tight">Cadastro fechado</h2>

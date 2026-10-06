@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     if (loginRateLimited(key))
       throw new ApiError("Muitas tentativas. Aguarde alguns minutos e tente de novo.", 429);
 
-    const row = findUserByEmail(body.email);
+    const row = await findUserByEmail(body.email);
     const ok = row ? await verifyPassword(body.password, row.password_hash) : false;
     if (!row || !ok) {
       registerLoginFailure(key);
