@@ -11,3 +11,7 @@ data/.auth-secret
 next-env.d.ts
 .DS_Store
 .next-prod
+
+.vercel
+.env*
+!.env.example
