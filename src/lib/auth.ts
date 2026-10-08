@@ -29,6 +29,10 @@ function getSecret(): Uint8Array {
     cachedSecret = new TextEncoder().encode(fromEnv);
     return cachedSecret;
   }
+  // Na Vercel o disco é só leitura e cada instância teria um segredo diferente
+  if (process.env.VERCEL) {
+    throw new Error("Defina AUTH_SECRET (16+ caracteres) nas variáveis de ambiente da Vercel.");
+  }
   // Sem AUTH_SECRET: gera um segredo aleatório e mantém em disco (pasta data).
   const file = path.join(DATA_DIR, ".auth-secret");
   let secret: string;
@@ -65,7 +69,7 @@ export async function createSession(userId: string) {
   jar.set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.COOKIE_SECURE === "true",
+    secure: process.env.COOKIE_SECURE === "true" || !!process.env.VERCEL,
     path: "/",
     maxAge: MAX_AGE,
   });
