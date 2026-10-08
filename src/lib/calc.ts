@@ -92,8 +92,8 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   for (const b of blocks) {
     if (b.kind === "total") continue;
     const t = cashTotals(b, cardSet);
-    // nas referências, um cartão vale a fatura inteira
-    plainTotals.set(b.id, cards.get(b.id)?.bill ?? t.total);
+    // nas referências, um cartão vale a fatura inteira e uma receita só o que já foi recebido
+    plainTotals.set(b.id, cards.get(b.id)?.bill ?? (b.kind === "income" ? t.done : t.total));
     for (const s of [scope("all"), scope(ownerScope(b, members))]) {
       if (b.kind === "income") (s.income += t.total), (s.incomeDone += t.done);
       else if (b.kind === "expense") (s.expense += t.total), (s.expenseDone += t.done);
