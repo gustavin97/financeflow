@@ -196,10 +196,6 @@ body {
     cursor: pointer;
     appearance: none;
   }
-  input[type="date"].cell {
-    padding-right: 4px;
-    font-size: 14.5px;
-  }
 }
 
 /* scrollbars discretas */

@@ -7,6 +7,7 @@ import { addMonths, monthRange, todayIso, ymShort } from "@/lib/dates";
 import { centsToInput, fmtBRL, parseMoney } from "@/lib/money";
 import type { Block, BudgetType, ColType, ExtraColumn } from "@/lib/types";
 import { Modal } from "../ui/Modal";
+import { DateInput } from "./cells";
 import type { NewInstallment } from "./useMonth";
 
 /* ------------------------------------------------------------------ */
@@ -390,14 +391,13 @@ export function InstallmentDialog({
             <label className="label" htmlFor="inst-date">
               Data da compra
             </label>
-            <input
+            <DateInput
               id="inst-date"
-              type="date"
               className="field"
               min={range.min}
               max={range.max}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              value={date || null}
+              onCommit={(v) => setDate(v ?? "")}
             />
           </div>
           {cards.length > 0 && (

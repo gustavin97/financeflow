@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CreditCard } from "lucide-react";
+import { CalendarDays, Check, CreditCard } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { centsToInput, fmtNum, fmtPlain, parseMoney } from "@/lib/money";
 import type { Status } from "@/lib/types";
@@ -166,6 +166,117 @@ export function MoneyCell({
 }
 
 /* ---------------------------- data ---------------------------- */
+/** ISO (aaaa-mm-dd) → dd/mm/aaaa */
+const isoToBr = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "");
+
+/** Aceita dd/mm/aaaa, dd/mm/aa, dd/mm (ano de `fallbackYear`) e só dígitos (ddmmaaaa). */
+function brToIso(text: string, fallbackYear: string): string | null | undefined {
+  const t = text.trim();
+  if (!t) return null;
+  const parts = /^\d{5,8}$/.test(t) ? [t.slice(0, 2), t.slice(2, 4), t.slice(4)] : t.split(/[/.\-\s]+/);
+  if (parts.length < 2 || parts.length > 3 || parts.some((p) => !/^\d+$/.test(p))) return undefined;
+  const [d, m] = parts.map(Number);
+  let y = parts[2] ?? fallbackYear;
+  if (y.length === 2) y = `20${y}`;
+  if (y.length !== 4) return undefined;
+  const date = new Date(Number(y), m - 1, d);
+  if (date.getFullYear() !== Number(y) || date.getMonth() !== m - 1 || date.getDate() !== d) return undefined;
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/** Campo de data em dd/mm/aaaa (o seletor nativo segue o idioma do navegador), com calendário. */
+export function DateInput({
+  value,
+  onCommit,
+  min,
+  max,
+  className,
+  id,
+  dataCell,
+  label,
+  onNav,
+}: BaseProps & {
+  value: string | null;
+  onCommit: (v: string | null) => void;
+  min?: string;
+  max?: string;
+  className?: string;
+  id?: string;
+}) {
+  const [text, setText] = useState(isoToBr(value));
+  const skip = useRef(false);
+  const picker = useRef<HTMLInputElement>(null);
+  useEffect(() => setText(isoToBr(value)), [value]);
+
+  const commit = () => {
+    if (skip.current) {
+      skip.current = false;
+      return;
+    }
+    const year = (value ?? max ?? min ?? new Date().toISOString()).slice(0, 4);
+    const iso = brToIso(text, year);
+    if (iso === undefined || iso === value) {
+      setText(isoToBr(value)); // inválido ou igual: volta ao valor anterior
+      return;
+    }
+    onCommit(iso);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        id={id}
+        data-cell={dataCell}
+        aria-label={label}
+        inputMode="numeric"
+        placeholder="dd/mm/aaaa"
+        className={`${className ?? ""} pr-8`}
+        value={text}
+        maxLength={10}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) =>
+          handleKeys(
+            e,
+            commit,
+            () => {
+              skip.current = true;
+              setText(isoToBr(value));
+            },
+            onNav,
+          )
+        }
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Abrir calendário"
+        className="absolute inset-y-0 right-1 flex items-center px-1 text-faint hover:text-ink"
+        onClick={() => {
+          try {
+            picker.current?.showPicker();
+          } catch {
+            picker.current?.focus();
+          }
+        }}
+      >
+        <CalendarDays size={15} />
+      </button>
+      <input
+        ref={picker}
+        type="date"
+        tabIndex={-1}
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 right-0 h-0 w-0 opacity-0"
+        value={value ?? ""}
+        min={min}
+        max={max}
+        onChange={(e) => onCommit(e.target.value || null)}
+      />
+    </div>
+  );
+}
+
 export function DateCell({
   value,
   onCommit,
@@ -182,15 +293,14 @@ export function DateCell({
   alert?: boolean;
 }) {
   return (
-    <input
-      data-cell={dataCell}
-      aria-label={label}
-      type="date"
-      className={`cell ${alert ? "font-semibold text-expense" : ""} ${value ? "" : "text-faint"}`}
-      value={value ?? ""}
+    <DateInput
+      dataCell={dataCell}
+      label={label}
+      className={`cell text-[14.5px] ${alert ? "font-semibold text-expense" : ""}`}
+      value={value}
       min={min}
       max={max}
-      onChange={(e) => onCommit(e.target.value || null)}
+      onCommit={onCommit}
     />
   );
 }
