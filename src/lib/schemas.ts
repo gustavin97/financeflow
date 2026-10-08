@@ -39,8 +39,6 @@ export const accountPatchSchema = z.object({
     .optional(),
   autoMonth: z.enum(["copy", "structure", "off"]).optional(),
   surplusMode: z.enum(["ask", "auto", "off"]).optional(),
-  emailAlerts: z.boolean().optional(),
-  emailHour: z.number().int().min(0).max(23).optional(),
   surplusGoal: z.string().min(1).max(64).nullable().optional(),
   surplusPct: z.number().int().min(1, "Porcentagem entre 1 e 100.").max(100, "Porcentagem entre 1 e 100.").optional(),
 });

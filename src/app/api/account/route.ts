@@ -4,28 +4,23 @@ import {
   deleteUser,
   findUserById,
   getAutoMonth,
-  getEmailPrefs,
   getSurplusPrefs,
   setAutoMonth,
-  setEmailPrefs,
   setSurplusPrefs,
   updateUserName,
   updateUserPassword,
 } from "@/lib/queries";
-import { mailConfigured } from "@/lib/mailer";
 import { accountDeleteSchema, accountPatchSchema } from "@/lib/schemas";
 
 export const GET = route(async ({ user }) => ({
   autoMonth: await getAutoMonth(user.id),
   surplus: await getSurplusPrefs(user.id),
-  email: { ...(await getEmailPrefs(user.id)), configured: mailConfigured() },
 }));
 
 export const PATCH = route(async ({ req, user }) => {
   const body = accountPatchSchema.parse(await readJson(req));
   if (body.name) await updateUserName(user.id, body.name);
   if (body.autoMonth) await setAutoMonth(user.id, body.autoMonth);
-  await setEmailPrefs(user.id, { enabled: body.emailAlerts, hour: body.emailHour });
   await setSurplusPrefs(user.id, { mode: body.surplusMode, goalId: body.surplusGoal, pct: body.surplusPct });
   if (body.newPassword) {
     const row = await findUserById(user.id);

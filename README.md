@@ -49,10 +49,7 @@ Variáveis de ambiente (copie `.env.example` para `.env`):
 | `COOKIE_SECURE` | Use `true` quando servir por HTTPS. |
 | `PUBLIC_ACCESS` | `true` libera o acesso sem login (entra como o primeiro usuário). Só funciona em desenvolvimento; em produção é ignorado. |
 | `ALLOW_SIGNUP` | A primeira conta sempre pode ser criada; depois o cadastro fecha. Use `true` para permitir novas contas. |
-| `APP_TIMEZONE` | Fuso que decide quando o mês vira para abrir o mês novo sozinho e o horário dos alertas por e-mail (padrão `America/Sao_Paulo`). |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Servidor de e-mail para os alertas (Gmail: `smtp.gmail.com`, porta 465, senha de app). Sem eles, nada é enviado. |
-| `MAIL_FROM` | Remetente dos e-mails (padrão: "Finance Flow <SMTP_USER>"). |
-| `APP_URL` | Endereço do app usado no link do e-mail (padrão `http://localhost:3000`). |
+| `APP_TIMEZONE` | Fuso que decide quando o mês vira para abrir o mês novo sozinho (padrão `America/Sao_Paulo`). |
 
 O banco fica no Supabase. Em produção (ou com `BACKUP_DIR` definido), o app também guarda uma cópia diária em JSON em `data/backups` (os últimos `BACKUP_KEEP` dias, padrão 14).
 
@@ -87,7 +84,7 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 **Cofrinho e metas.** Em *Cofrinho* você cadastra as metas (valor, prazo opcional). O sistema soma tudo que foi guardado nas planilhas, mostra o progresso, o ritmo mensal (média dos últimos 3 meses) e uma previsão de quando a meta é atingida.
 
-**Fechamento e vencimento do cartão.** Na configuração de um cartão (⋯ → Configurar, ou o link no rodapé da tabela) informe o dia do fechamento e o do vencimento. A tabela do cartão de cada mês passa a ser a **fatura que vence naquele mês**: com fechamento no dia 3 e vencimento no dia 10, a fatura de outubro tem as compras de 4/set a 3/out. O rodapé mostra o período, o fechamento e o vencimento. Compras (no cartão ou pagas com ele em outra tabela) cuja data é de outra fatura ganham a etiqueta *fatura de nov*: clicando nela, ou em *Mover para a fatura certa*, elas vão para o mês certo; se ele ainda não foi iniciado, entram quando for. Parcelas não mudam de fatura. Ao copiar o mês, as compras do cartão andam um mês na data, para continuar na fatura certa. Os dias passam para os meses seguintes, e a planilha (e o e-mail) avisam quando a fatura fecha em até 2 dias e quando vence em até 3 dias ou já venceu sem ser paga. Na importação da fatura, só as compras do período dela vêm marcadas.
+**Fechamento e vencimento do cartão.** Na configuração de um cartão (⋯ → Configurar, ou o link no rodapé da tabela) informe o dia do fechamento e o do vencimento. A tabela do cartão de cada mês passa a ser a **fatura que vence naquele mês**: com fechamento no dia 3 e vencimento no dia 10, a fatura de outubro tem as compras de 4/set a 3/out. O rodapé mostra o período, o fechamento e o vencimento. Compras (no cartão ou pagas com ele em outra tabela) cuja data é de outra fatura ganham a etiqueta *fatura de nov*: clicando nela, ou em *Mover para a fatura certa*, elas vão para o mês certo; se ele ainda não foi iniciado, entram quando for. Parcelas não mudam de fatura. Ao copiar o mês, as compras do cartão andam um mês na data, para continuar na fatura certa. Os dias passam para os meses seguintes, e a planilha avisa quando a fatura fecha em até 2 dias e quando vence em até 3 dias ou já venceu sem ser paga. Na importação da fatura, só as compras do período dela vêm marcadas.
 
 **Compras parceladas.** Em qualquer tabela de despesa (inclusive a do cartão), *Compra parcelada* lança a compra com o valor total ou o da parcela, o número de parcelas e em qual parcela ela está neste mês (para compras feitas antes). Cada parcela vira uma linha no mês dela, com a etiqueta "3/12": os meses já abertos recebem na hora, os próximos quando forem iniciados (se a tabela não existir naquele mês, ela é criada). Os centavos que sobram da divisão vão para a 1ª parcela. Clicando na etiqueta dá para **encerrar o parcelamento**: somem a parcela do mês e as seguintes, e as anteriores ficam.
 
@@ -104,8 +101,6 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 **Sobra do mês para o cofrinho.** Quando um mês fecha no azul, a sobra (saldo previsto do mês, sem passar do saldo acumulado) pode ir para uma meta: vira a linha *Sobra de setembro* numa tabela de cofrinho do conjunto naquele mês (se não houver, a tabela *Cofrinho* é criada), conta no progresso da meta e sai do saldo acumulado. Em *Conta → Sobra do mês* você escolhe **perguntar** (o mês atual mostra quanto sobrou, com a meta e a porcentagem para confirmar), **guardar sozinho** na virada do mês (com aviso e botão de desfazer) ou não fazer nada. Cada mês só é guardado uma vez.
 
-**Alertas por e-mail.** Em *Conta → Alertas por e-mail*, ligue o resumo diário e escolha o horário. Os mesmos sinalizadores da planilha (contas vencidas ou vencendo, limite estourado, mês no vermelho, fatura perto do limite...) chegam no e-mail da conta, só quando há aviso novo ou que mudou (contas vencidas e vencendo avisam a cada dia até serem marcadas como pagas). O botão *Enviar teste agora* manda o resumo na hora. O app precisa estar rodando: a verificação acontece a cada 5 minutos e, se ele estava desligado no horário, o e-mail sai quando voltar a rodar no mesmo dia. Para configurar o envio pelo Gmail, crie uma [senha de app](https://myaccount.google.com/apppasswords) (exige verificação em duas etapas) e preencha no `.env`: `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER` (seu Gmail) e `SMTP_PASS` (a senha de app). Reinicie o app depois.
-
 **Visão anual.** Os 12 meses lado a lado, gráfico de receitas x despesas x cofrinho, saldo acumulado e a divisão por categoria.
 
 ## Dicas de uso na planilha
@@ -117,7 +112,7 @@ Você cria quantas tabelas quiser, renomeia, exclui, e adiciona **colunas própr
 
 ## Stack
 
-Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · Postgres no Supabase (`pg`) · `bcryptjs` · `jose` (JWT em cookie httpOnly) · `zod` · `nodemailer`.
+Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS · Postgres no Supabase (`pg`) · `bcryptjs` · `jose` (JWT em cookie httpOnly) · `zod`.
 
 ## Estrutura
 
