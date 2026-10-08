@@ -14,12 +14,6 @@ const MAX_AGE = 60 * 60 * 24 * 30; // 30 dias
 // e nunca em produção: lá qualquer visitante veria e apagaria os dados do casal.
 export const PUBLIC_ACCESS = process.env.PUBLIC_ACCESS === "true" && process.env.NODE_ENV !== "production";
 
-// Novas contas: o primeiro cadastro sempre é liberado; depois, só com ALLOW_SIGNUP=true.
-export async function signupOpen(): Promise<boolean> {
-  if (process.env.ALLOW_SIGNUP === "true") return true;
-  return !(await getDb().prepare("SELECT 1 FROM users LIMIT 1").get());
-}
-
 let cachedSecret: Uint8Array | null = null;
 
 function getSecret(): Uint8Array {

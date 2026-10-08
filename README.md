@@ -48,7 +48,6 @@ Variáveis de ambiente (copie `.env.example` para `.env`):
 | `DATABASE_POOL_MAX` | Máximo de conexões abertas ao mesmo tempo (padrão 5). |
 | `COOKIE_SECURE` | Use `true` quando servir por HTTPS. |
 | `PUBLIC_ACCESS` | `true` libera o acesso sem login (entra como o primeiro usuário). Só funciona em desenvolvimento; em produção é ignorado. |
-| `ALLOW_SIGNUP` | A primeira conta sempre pode ser criada; depois o cadastro fecha. Use `true` para permitir novas contas. |
 | `APP_TIMEZONE` | Fuso que decide quando o mês vira para abrir o mês novo sozinho (padrão `America/Sao_Paulo`). |
 
 O banco fica no Supabase. Em produção (ou com `BACKUP_DIR` definido), o app também guarda uma cópia diária em JSON em `data/backups` (os últimos `BACKUP_KEEP` dias, padrão 14).
