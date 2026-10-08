@@ -47,9 +47,9 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
     >
       <Cell
         label="Receitas"
-        value={s.income}
+        value={s.incomeDone}
         color="#107c41"
-        lines={[`Recebido: ${fmtBRL(s.incomeDone)}`, `A receber: ${fmtBRL(s.income - s.incomeDone)}`]}
+        lines={[`Previsto: ${fmtBRL(s.income)}`, `A receber: ${fmtBRL(s.income - s.incomeDone)}`]}
       />
       <Cell
         label="Despesas"
