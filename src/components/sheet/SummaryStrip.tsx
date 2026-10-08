@@ -1,4 +1,4 @@
-import type { MonthCalc } from "@/lib/calc";
+import type { MonthCalc, ScopeTotals } from "@/lib/calc";
 import { SHARED_COLOR } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct } from "@/lib/money";
 import type { MonthSummary } from "@/lib/summary";
@@ -88,13 +88,15 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
  */
 export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthCalc }) {
   if (!members.length) return null;
-  const shared = calc.scopes.get("shared")!;
-  const all = calc.scopes.get("all")!;
-  const peopleIncome = members.reduce((s, m) => s + (calc.scopes.get(m.id)?.income ?? 0), 0);
+  // receitas só contam depois de recebidas
+  const received = (s: ScopeTotals) => ({ ...s, income: s.incomeDone, balance: s.incomeDone - s.expense - s.savings });
+  const shared = received(calc.scopes.get("shared")!);
+  const all = received(calc.scopes.get("all")!);
+  const peopleIncome = members.reduce((s, m) => s + (calc.scopes.get(m.id)?.incomeDone ?? 0), 0);
   const sharedOut = shared.expense + shared.savings - shared.income;
 
   const rows = members.map((m) => {
-    const s = calc.scopes.get(m.id)!;
+    const s = received(calc.scopes.get(m.id)!);
     const ratio = peopleIncome > 0 ? s.income / peopleIncome : 1 / members.length;
     const part = Math.round(sharedOut * ratio);
     return { id: m.id, name: m.name, color: m.color, s, ratio, part, final: s.balance - part };
