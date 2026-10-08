@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import path from "node:path";
+import { attachDatabasePool } from "@vercel/functions";
 import pg from "pg";
 
 // o schema fica em supabase/schema.sql (rode no SQL Editor do Supabase)
@@ -50,13 +51,17 @@ function pool(): pg.Pool {
   if (!globalThis.__financeFlowPool) {
     const conn = connectionString();
     const local = /@(localhost|127\.0\.0\.1)[:/]/.test(conn);
+    const vercel = !!process.env.VERCEL;
     const p = new pg.Pool({
       connectionString: conn,
       ssl: local ? false : { rejectUnauthorized: false },
-      max: Number(process.env.DATABASE_POOL_MAX) || 5,
-      idleTimeoutMillis: 30_000,
+      // na Vercel cada instância tem seu pool: poucas conexões, devolvidas logo
+      max: Number(process.env.DATABASE_POOL_MAX) || (vercel ? 2 : 5),
+      idleTimeoutMillis: vercel ? 5_000 : 30_000,
     });
     p.on("error", (err) => console.error("Conexão com o banco:", err));
+    // fecha as conexões ociosas antes de a instância ser suspensa
+    if (vercel) attachDatabasePool(p);
     globalThis.__financeFlowPool = p;
   }
   return globalThis.__financeFlowPool;
