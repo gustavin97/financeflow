@@ -215,7 +215,6 @@ function MonthView({ ym }: { ym: string }) {
                   <BlockTable
                     block={b}
                     blocks={data.blocks}
-                    goals={data.goals}
                     members={members}
                     calc={calc}
                     income={summary.income}

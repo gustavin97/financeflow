@@ -8,11 +8,11 @@ import { MONTHS_LONG, monthRange, todayIso } from "@/lib/dates";
 import { faturaDates, faturaYm, hasCycle } from "@/lib/card";
 import { refLabel, type MonthCalc, type Running } from "@/lib/calc";
 import { blockTotals, budgetLimit, type CardInfo } from "@/lib/summary";
-import type { Block, Entry, ExtraColumn, GoalLite, Member } from "@/lib/types";
+import type { Block, Entry, ExtraColumn, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog } from "./blockDialogs";
-import { DateCell, GoalCell, MoneyCell, PayWithCell, StatusCell, TextCell, type Nav } from "./cells";
+import { DateCell, MoneyCell, PayWithCell, StatusCell, TextCell, type Nav } from "./cells";
 import { BudgetDialog, ColumnsDialog, InstallmentDialog } from "./dialogs";
 import type { useMonth } from "./useMonth";
 
@@ -57,7 +57,6 @@ function FaturaTag({ target, onMove }: { target: string; onMove: () => void }) {
 export function BlockTable({
   block,
   blocks,
-  goals,
   members,
   calc,
   income,
@@ -66,7 +65,6 @@ export function BlockTable({
 }: {
   block: Block;
   blocks: Block[];
-  goals: GoalLite[];
   members: Member[];
   calc: MonthCalc;
   income: number;
@@ -76,7 +74,7 @@ export function BlockTable({
   const card = calc.cards.get(block.id) ?? null;
   const meta = KIND_META[block.kind];
   const color = card ? CARD_META.color : meta.color;
-  const { total: ownTotal, done, count, doneCount } = blockTotals(block);
+  const { total: ownTotal, count, doneCount } = blockTotals(block);
   // o cartão mostra a fatura inteira: compras da própria tabela + despesas pagas com ele
   const total = card ? card.bill : ownTotal;
   const [dialog, setDialog] = useState<"budget" | "columns" | "settings" | "installment" | null>(null);
@@ -168,7 +166,7 @@ export function BlockTable({
     128 +
     (showSaldo ? 128 : 0) +
     152 +
-    (isSavings ? 170 + 166 : 0) +
+    (isSavings ? 128 : 0) +
     (showStatus ? 128 : 0) +
     (showPayWith ? 150 : 0) +
     extras.length * 156 +
@@ -178,7 +176,7 @@ export function BlockTable({
   const base = running ? calc.resolve(running.source) : income;
   const limit = budgetLimit(block, base);
   const cols =
-    3 + (showSaldo ? 1 : 0) + (isSavings ? 2 : 0) + (showStatus ? 1 : 0) + (showPayWith ? 1 : 0) + extras.length;
+    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + (showStatus ? 1 : 0) + (showPayWith ? 1 : 0) + extras.length;
 
   return (
     <section className="panel-open" aria-label={`Tabela ${block.name}`}>
@@ -228,10 +226,8 @@ export function BlockTable({
           {fmtBRL(total)}
         </span>
         <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={18} />}>
-          {block.kind !== "income" && !card && (
-            <MenuItem onClick={() => setDialog("budget")}>
-              {isSavings ? "Definir meta do mês" : "Definir limite do mês"}
-            </MenuItem>
+          {block.kind === "expense" && !card && (
+            <MenuItem onClick={() => setDialog("budget")}>Definir limite do mês</MenuItem>
           )}
           <MenuItem onClick={() => setDialog("settings")}>
             {block.kind === "income"
@@ -280,12 +276,7 @@ export function BlockTable({
             <col style={{ width: 128 }} />
             {showSaldo && <col style={{ width: 128 }} />}
             <col style={{ width: 152 }} />
-            {isSavings && (
-              <>
-                <col style={{ width: 170 }} />
-                <col style={{ width: 166 }} />
-              </>
-            )}
+            {isSavings && <col style={{ width: 128 }} />}
             {showStatus && <col style={{ width: 128 }} />}
             {showPayWith && <col style={{ width: 150 }} />}
             {extras.map((c) => (
@@ -314,12 +305,7 @@ export function BlockTable({
                   )
                 ))}
               <th>{card ? "Data" : meta.dateLabel}</th>
-              {isSavings && (
-                <>
-                  <th className="!text-right">Meta (R$)</th>
-                  <th>Cofrinho</th>
-                </>
-              )}
+              {isSavings && <th className="!text-right">Meta (R$)</th>}
               {showStatus && <th>Status</th>}
               {showPayWith && <th title="Saldo: sai do dinheiro da tabela. Cartão: entra na fatura e desconta o limite">Pagar com</th>}
               {extras.map((c) => (
@@ -346,7 +332,6 @@ export function BlockTable({
                 entry={e}
                 index={i}
                 block={block}
-                goals={goals}
                 range={range}
                 today={today}
                 actions={actions}
@@ -452,12 +437,7 @@ export function BlockTable({
                 </td>
               )}
               <td />
-              {isSavings && (
-                <>
-                  <td className="text-right">{targetTotal ? fmtNum(targetTotal) : ""}</td>
-                  <td />
-                </>
-              )}
+              {isSavings && <td className="text-right">{targetTotal ? fmtNum(targetTotal) : ""}</td>}
               {showStatus && (
                 <td className="whitespace-nowrap text-[14px] font-medium text-muted">
                   {count > 0 ? `${doneCount} de ${count} ${DONE_PLURAL[block.kind]}` : ""}
@@ -504,9 +484,10 @@ export function BlockTable({
               onCard={onCardTotal}
             />
           )}
-          {block.kind !== "income" && block.budgetType !== "none" && (
-            <BudgetBar block={block} total={total} done={done} limit={limit} income={base} />
+          {block.kind === "expense" && block.budgetType !== "none" && (
+            <BudgetBar block={block} total={total} limit={limit} income={base} />
           )}
+          {isSavings && <TargetBars entries={block.entries} />}
         </>
       )}
 
@@ -552,7 +533,6 @@ function EntryRow({
   entry: e,
   index: i,
   block,
-  goals,
   range,
   today,
   actions,
@@ -565,7 +545,6 @@ function EntryRow({
   entry: Entry;
   index: number;
   block: Block;
-  goals: GoalLite[];
   range: { min: string; max: string };
   today: string;
   actions: Actions;
@@ -650,17 +629,6 @@ function EntryRow({
             onCommit={(v) => patch({ target: v > 0 ? v : null })}
             onNav={(d) => navigate(i, "target", d)}
           />
-          {!!e.target && <TargetProgress target={e.target} saved={e.status === "done" ? e.amount : 0} color={meta.color} />}
-        </td>
-      )}
-      {block.kind === "savings" && (
-        <td>
-          <GoalCell
-            label="Cofrinho"
-            value={e.goalId}
-            goals={goals}
-            onCommit={(v) => patch({ goalId: v })}
-          />
         </td>
       )}
       {showStatus && (
@@ -706,25 +674,40 @@ function EntryRow({
   );
 }
 
-/** Barra da meta da linha: só conta o valor depois de marcado como guardado. */
-function TargetProgress({ target, saved, color }: { target: number; saved: number; color: string }) {
-  const pct = Math.min(1, Math.max(0, saved / target));
-  const reached = saved >= target;
+/** Metas das linhas de economias: o valor só conta depois de marcado como guardado. */
+function TargetBars({ entries }: { entries: Entry[] }) {
+  const withTarget = entries.filter((e) => e.target);
+  if (!withTarget.length) return null;
   return (
-    <div className="px-2 pb-1.5">
-      <div
-        className="h-[6px] bg-[#e3e7eb]"
-        role="progressbar"
-        aria-valuenow={Math.round(pct * 100)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Progresso da meta"
-      >
-        <div className="h-full" style={{ width: `${pct * 100}%`, background: reached ? "#107c41" : color }} />
-      </div>
-      <p className={`mt-0.5 text-right text-[13px] leading-tight ${reached ? "font-semibold text-brand" : "text-muted"}`}>
-        {reached ? "Meta atingida" : `Falta ${fmtNum(target - saved)} · ${fmtPct(pct)}`}
-      </p>
+    <div className="space-y-2.5 border-t border-grid bg-[#fafbfb] px-3 py-2">
+      {withTarget.map((e) => {
+        const target = e.target!;
+        const saved = e.status === "done" ? e.amount : 0;
+        const ratio = Math.min(1, Math.max(0, saved / target));
+        const name = e.description || "Sem descrição";
+        return (
+          <div key={e.id}>
+            <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 text-[14px]">
+              <span className="text-muted">
+                {name}: meta <span className="font-semibold text-ink">{fmtBRL(target)}</span>
+              </span>
+              <span className="font-semibold" style={{ color: "#1d5fbf" }}>
+                {saved >= target ? "Meta atingida" : `Faltam ${fmtBRL(target - saved)} · ${fmtPct(ratio)}`}
+              </span>
+            </div>
+            <div
+              className="h-[6px] w-full bg-[#e3e7eb]"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(ratio * 100)}
+              aria-label={`Meta de ${name}`}
+            >
+              <div className="h-full transition-[width] duration-300" style={{ width: `${ratio * 100}%`, background: "#1d5fbf" }} />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1049,12 +1032,10 @@ function BudgetBar({
 }: {
   block: Block;
   total: number;
-  done: number;
   limit: number | null;
   income: number;
 }) {
-  const isSavings = block.kind === "savings";
-  const what = isSavings ? "Meta do mês" : "Limite do mês";
+  const what = "Limite do mês";
 
   if (limit === null || (block.budgetType === "percent" && income <= 0)) {
     return (
@@ -1065,19 +1046,14 @@ function BudgetBar({
   }
 
   const ratio = limit > 0 ? total / limit : total > 0 ? 2 : 0;
-  const over = !isSavings && total > limit;
-  const color = isSavings ? "#1d5fbf" : over ? "#c4361f" : ratio >= 0.8 ? "#d9822b" : "#107c41";
+  const over = total > limit;
+  const color = over ? "#c4361f" : ratio >= 0.8 ? "#d9822b" : "#107c41";
   const origin =
     block.budgetType === "percent"
       ? `${fmtPct(block.budgetValue / 100, block.budgetValue % 1 ? 1 : 0)} da renda`
       : "valor fixo";
 
-  let message: string;
-  if (isSavings) {
-    message = total >= limit ? "Meta do mês atingida" : `Faltam ${fmtBRL(limit - total)}`;
-  } else {
-    message = over ? `Passou ${fmtBRL(total - limit)} do limite` : `Restam ${fmtBRL(limit - total)}`;
-  }
+  const message = over ? `Passou ${fmtBRL(total - limit)} do limite` : `Restam ${fmtBRL(limit - total)}`;
 
   return (
     <div className="border-t border-grid bg-[#fafbfb] px-3 py-2">

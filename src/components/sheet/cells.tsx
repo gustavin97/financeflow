@@ -379,39 +379,3 @@ export function PayWithCell({
     </div>
   );
 }
-
-/* ---------------------------- meta (select) ---------------------------- */
-export function GoalCell({
-  value,
-  goals,
-  onCommit,
-  label,
-}: {
-  value: string | null;
-  goals: { id: string; name: string; color: string }[];
-  onCommit: (v: string | null) => void;
-  label?: string;
-}) {
-  const goal = goals.find((g) => g.id === value);
-  return (
-    <div className="relative">
-      <span
-        className="pointer-events-none absolute left-2 top-1/2 h-2.5 w-2.5 -translate-y-1/2"
-        style={{ background: goal?.color ?? "#cfd5db" }}
-      />
-      <select
-        aria-label={label}
-        className="cell pl-6"
-        value={value ?? ""}
-        onChange={(e) => onCommit(e.target.value || null)}
-      >
-        <option value="">Sem meta</option>
-        {goals.map((g) => (
-          <option key={g.id} value={g.id}>
-            {g.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
