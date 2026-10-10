@@ -174,12 +174,12 @@ export async function deleteMember(userId: string, id: string) {
 /** Saldo acumulado de todos os meses anteriores a `ym`. */
 async function carryBefore(userId: string, ym: string): Promise<Carry> {
   const db = getDb();
-  // linhas de cartão (na tabela do cartão ou pagas com ele) só viram realizado
-  // quando a fatura é paga: aí conta o valor pago (card_paid + pagamentos avulsos)
+  // linhas de cartão (na tabela do cartão ou pagas com ele) não entram: o
+  // pagamento da fatura é lançado como linha numa tabela de despesas
   const rows = await db
     .prepare(
       `SELECT b.kind AS kind,
-              COALESCE(SUM(e.amount), 0) AS total,
+              COALESCE(SUM(CASE WHEN b.card = 0 AND c.id IS NULL THEN e.amount ELSE 0 END), 0) AS total,
               COALESCE(SUM(CASE WHEN e.status = 'done' AND b.card = 0 AND c.id IS NULL THEN e.amount ELSE 0 END), 0) AS done
          FROM entries e JOIN blocks b ON b.id = e.block_id
          LEFT JOIN blocks c ON c.id = e.pay_with AND c.card = 1 AND c.kind = 'expense'
@@ -193,13 +193,6 @@ async function carryBefore(userId: string, ym: string): Promise<Carry> {
     carry.planned += sign * r.total;
     carry.realized += sign * r.done;
   }
-  const paid = (await db
-    .prepare(
-      `SELECT COALESCE(SUM(COALESCE(card_paid, 0) + card_extra), 0) AS p FROM blocks
-        WHERE user_id = ? AND ym < ? AND card = 1 AND kind = 'expense'`,
-    )
-    .get(userId, ym))!;
-  carry.realized -= paid.p as number;
   return carry;
 }
 

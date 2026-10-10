@@ -468,8 +468,6 @@ export function BlockTable({
         <CardBar
           block={block}
           card={card}
-          running={running}
-          sourceLabel={running ? refLabel(running.source, blocks, members) : ""}
           onEditSource={() => setDialog("settings")}
           onPatch={(p) => actions.patchBlock(block.id, p)}
           cycle={cycle}
@@ -811,8 +809,6 @@ function ExtraPayment({ extra, onChange }: { extra: number; onChange: (total: nu
 function CardBar({
   block,
   card,
-  running,
-  sourceLabel,
   onEditSource,
   onPatch,
   cycle,
@@ -823,8 +819,6 @@ function CardBar({
 }: {
   block: Block;
   card: CardInfo;
-  running: Running | null;
-  sourceLabel: string;
   onEditSource: () => void;
   onPatch: (p: { budgetType?: "none" | "amount"; budgetValue?: number; cardPaid?: number | null; cardClosed?: number | null; cardExtra?: number }) => void;
   cycle: { start: string; close: string; due: string } | null;
@@ -927,17 +921,8 @@ function CardBar({
 
       {/* pagamento da fatura */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-grid pt-2">
-        <span className="text-muted">
-          Pagamento sai de{" "}
-          <button className="font-semibold text-ink hover:underline" onClick={onEditSource} title="Mudar de onde sai o pagamento">
-            {sourceLabel}
-          </button>
-          {running && (
-            <>
-              : {running.sharedWith.length ? "restavam " : ""}
-              <span className="font-semibold text-ink">{fmtBRL(running.start)}</span>
-            </>
-          )}
+        <span className="text-muted" title="O cartão é crédito: lance o pagamento como linha numa tabela de despesas para ele sair do dinheiro">
+          Pagamento: abate o gasto e libera o limite
         </span>
         <span className="flex flex-wrap items-center gap-2">
           <span className="text-muted" title="Valor da fatura que já fechou e vence neste mês, como o banco cobrou">
@@ -977,18 +962,12 @@ function CardBar({
       </div>
       {/* pagamentos avulsos: qualquer valor, a qualquer hora, libera limite */}
       <ExtraPayment extra={card.extra} onChange={(cardExtra) => onPatch({ cardExtra })} />
-      {(running || left !== 0) && (
+      {left !== 0 && (
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <span className="text-muted">
             {left > 0 && `Ficaram ${fmtBRL(left)} da ${what} sem pagar. `}
             {left < 0 && `Pago ${fmtBRL(-left)} a mais que a ${what}. `}
-            {paid === null && card.due > 0 && `Até pagar, a ${what} conta como prevista.`}
           </span>
-          {running && (
-            <span className="font-semibold" style={{ color: running.end < 0 ? "#c4361f" : "#107c41" }}>
-              {running.end < 0 ? `Faltam ${fmtBRL(-running.end)}` : `Sobram ${fmtBRL(running.end)}`}
-            </span>
-          )}
         </div>
       )}
     </div>

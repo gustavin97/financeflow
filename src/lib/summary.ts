@@ -75,20 +75,19 @@ export function cardInfo(card: Block, blocks: Block[]): CardInfo {
 }
 
 /**
- * Valores que entram nas somas do mês. Despesas pagas com cartão contam como
- * previstas na própria tabela, mas só viram "pagas" quando a fatura é paga:
- * o realizado do cartão é o valor pago da fatura.
+ * Valores que entram nas somas do mês. O cartão é crédito: as compras nele
+ * (na tabela do cartão ou pagas com ele) não entram nas somas, e o pagamento
+ * da fatura é lançado como linha numa tabela de despesas. O valor pago
+ * registrado no cartão só abate o gasto e libera o limite.
  */
 export function cashTotals(b: Block, cards: Set<string>) {
-  if (b.card && cards.has(b.id)) {
-    // com a fatura fechada informada, é ela que se paga no mês; as compras da tabela vão para a próxima
-    return { total: b.cardClosed ?? b.entries.reduce((s, e) => s + e.amount, 0), done: (b.cardPaid ?? 0) + b.cardExtra };
-  }
+  if (b.card && cards.has(b.id)) return { total: 0, done: 0 };
   let total = 0;
   let done = 0;
   for (const e of b.entries) {
+    if (onCard(e, cards)) continue;
     total += e.amount;
-    if (e.status === "done" && !onCard(e, cards)) done += e.amount;
+    if (e.status === "done") done += e.amount;
   }
   return { total, done };
 }

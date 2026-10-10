@@ -229,12 +229,8 @@ export function monthAlerts(input: {
     const moves: { date: string; v: number }[] = [];
     for (const b of blocks) {
       if (b.kind === "total") continue;
-      const card = calc.cards.get(b.id);
-      if (card) {
-        // fatura ainda não paga: sai do caixa (sem data, o cenário mais prudente é hoje)
-        if (card.paid === null && card.due > 0) moves.push({ date: today, v: -card.due });
-        continue;
-      }
+      // o cartão é crédito: o pagamento da fatura é linha de despesa
+      if (calc.cards.has(b.id)) continue;
       const sign = b.kind === "income" ? 1 : -1;
       for (const e of b.entries)
         if (e.status === "pending" && e.amount && !onCard(e, cards))

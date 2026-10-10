@@ -170,16 +170,13 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     return head === "kind" && who ? [ref, `kind:${k}`] : [ref];
   };
   const spenders = blocks
-    .filter((b) => b.kind === "expense" || b.kind === "savings")
+    // o cartão é crédito: não consome a fonte (o pagamento é linha de despesa)
+    .filter((b) => (b.kind === "expense" || b.kind === "savings") && !cards.has(b.id))
     .map((b, order) => {
-      const card = cards.get(b.id);
-      const spent = card
-        ? (card.paid ?? 0) + card.extra
-        : b.entries.reduce((s, e) => (onCard(e, cardSet) || e.status !== "done" ? s : s + e.amount), 0);
+      const spent = b.entries.reduce((s, e) => (onCard(e, cardSet) || e.status !== "done" ? s : s + e.amount), 0);
       return { b, order, source: sourceOf(b), spent };
     });
   const comesBefore = (x: (typeof spenders)[number], y: (typeof spenders)[number]) => {
-    if (cards.has(x.b.id)) return false;
     if (x.b.kind === "savings") return y.b.kind === "savings" && x.order < y.order;
     return y.b.kind === "savings" || x.order < y.order;
   };
@@ -188,9 +185,7 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     const prior = spenders.filter((o) => o !== s && comesBefore(o, s) && containers(o.source).includes(source));
     const start = cash(source) - prior.reduce((t, o) => t + o.spent, 0);
     let bal = start;
-    let after: number[] = [];
-    if (cards.has(b.id)) bal -= s.spent;
-    else after = b.entries.map((e) => (onCard(e, cardSet) || e.status !== "done" ? bal : (bal -= e.amount)));
+    const after = b.entries.map((e) => (onCard(e, cardSet) || e.status !== "done" ? bal : (bal -= e.amount)));
     running.set(b.id, { source, start, after, end: bal, sharedWith: prior.map((o) => o.b.name) });
   }
 
