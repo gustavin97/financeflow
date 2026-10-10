@@ -107,6 +107,7 @@ export function BlockTable({
     );
   };
   const isSavings = block.kind === "savings";
+  const targetTotal = isSavings ? block.entries.reduce((s, e) => s + (e.target ?? 0), 0) : 0;
   const extras = block.columns;
 
   // cartões em que as linhas desta despesa podem ser lançadas
@@ -167,7 +168,7 @@ export function BlockTable({
     128 +
     (showSaldo ? 128 : 0) +
     152 +
-    (isSavings ? 166 : 0) +
+    (isSavings ? 128 + 166 : 0) +
     (showStatus ? 128 : 0) +
     (showPayWith ? 150 : 0) +
     extras.length * 156 +
@@ -177,7 +178,7 @@ export function BlockTable({
   const base = running ? calc.resolve(running.source) : income;
   const limit = budgetLimit(block, base);
   const cols =
-    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + (showStatus ? 1 : 0) + (showPayWith ? 1 : 0) + extras.length;
+    3 + (showSaldo ? 1 : 0) + (isSavings ? 2 : 0) + (showStatus ? 1 : 0) + (showPayWith ? 1 : 0) + extras.length;
 
   return (
     <section className="panel-open" aria-label={`Tabela ${block.name}`}>
@@ -279,7 +280,12 @@ export function BlockTable({
             <col style={{ width: 128 }} />
             {showSaldo && <col style={{ width: 128 }} />}
             <col style={{ width: 152 }} />
-            {isSavings && <col style={{ width: 166 }} />}
+            {isSavings && (
+              <>
+                <col style={{ width: 128 }} />
+                <col style={{ width: 166 }} />
+              </>
+            )}
             {showStatus && <col style={{ width: 128 }} />}
             {showPayWith && <col style={{ width: 150 }} />}
             {extras.map((c) => (
@@ -308,7 +314,12 @@ export function BlockTable({
                   )
                 ))}
               <th>{card ? "Data" : meta.dateLabel}</th>
-              {isSavings && <th>Meta</th>}
+              {isSavings && (
+                <>
+                  <th className="!text-right">Meta (R$)</th>
+                  <th>Cofrinho</th>
+                </>
+              )}
               {showStatus && <th>Status</th>}
               {showPayWith && <th title="Saldo: sai do dinheiro da tabela. Cartão: entra na fatura e desconta o limite">Pagar com</th>}
               {extras.map((c) => (
@@ -441,7 +452,12 @@ export function BlockTable({
                 </td>
               )}
               <td />
-              {isSavings && <td />}
+              {isSavings && (
+                <>
+                  <td className="text-right">{targetTotal ? fmtNum(targetTotal) : ""}</td>
+                  <td />
+                </>
+              )}
               {showStatus && (
                 <td className="whitespace-nowrap text-[14px] font-medium text-muted">
                   {count > 0 ? `${doneCount} de ${count} ${DONE_PLURAL[block.kind]}` : ""}
@@ -627,8 +643,19 @@ function EntryRow({
       </td>
       {block.kind === "savings" && (
         <td>
-          <GoalCell
+          <MoneyCell
+            dataCell={`${i}:target`}
             label="Meta"
+            value={e.target ?? 0}
+            onCommit={(v) => patch({ target: v > 0 ? v : null })}
+            onNav={(d) => navigate(i, "target", d)}
+          />
+        </td>
+      )}
+      {block.kind === "savings" && (
+        <td>
+          <GoalCell
+            label="Cofrinho"
             value={e.goalId}
             goals={goals}
             onCommit={(v) => patch({ goalId: v })}

@@ -184,6 +184,8 @@ create table if not exists entries (
   date        text,
   status      text not null default 'pending' check (status in ('pending','done')),
   goal_id     text references goals(id) on delete set null,
+  -- economias: meta própria da linha, em centavos (NULL = sem meta)
+  target      integer,
   extra       jsonb not null default '{}'::jsonb,
   position    integer not null default 0,
   -- tabelas de total: de onde vem o valor e se soma (1) ou subtrai (-1)
@@ -197,6 +199,9 @@ create table if not exists entries (
   inst_count  integer,
   created_at  timestamptz not null default now()
 );
+-- bancos criados antes da meta por linha
+alter table entries add column if not exists target integer;
+
 create index if not exists idx_entries_block    on entries(block_id);
 create index if not exists idx_entries_user     on entries(user_id);
 create index if not exists idx_entries_goal     on entries(goal_id);

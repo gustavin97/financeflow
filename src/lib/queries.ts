@@ -78,6 +78,7 @@ function mapEntry(r: Row): Entry {
     date: r.date,
     status: r.status,
     goalId: r.goal_id,
+    target: r.target ?? null,
     extra: parseJson<Record<string, ExtraValue>>(r.extra, {}),
     position: r.position,
     ref: r.ref ?? null,
@@ -296,8 +297,8 @@ export async function initMonth(userId: string, ym: string, mode: StartMode) {
         .prepare("SELECT * FROM blocks WHERE user_id = ? AND ym = ? ORDER BY position, created_at")
         .all(userId, prev.ym);
       const insertEntry = db.prepare(
-        `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, extra, position, ref, sign, pay_with)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, target, extra, position, ref, sign, pay_with)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       );
       // compras de cartão com fechamento: a fatura de outubro tem compras de setembro, então
       // a data anda o mesmo número de meses em vez de cair dentro do mês novo
@@ -336,6 +337,7 @@ export async function initMonth(userId: string, ym: string, mode: StartMode) {
               newDate(e.date, cycleCards.has(br.id) || (!!e.payWith && cycleCards.has(e.payWith))),
               "pending",
               e.goalId,
+              e.target,
               JSON.stringify(extra),
               e.position,
               remapRef(e.ref, ids),
@@ -745,7 +747,7 @@ async function assertGoal(userId: string, goalId: string | null | undefined) {
 export async function createEntry(
   userId: string,
   blockId: string,
-  init: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "ref" | "sign" | "payWith">> = {},
+  init: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "target" | "ref" | "sign" | "payWith">> = {},
 ): Promise<Entry> {
   const db = getDb();
   const block = await ownedBlock(userId, blockId);
@@ -756,8 +758,8 @@ export async function createEntry(
     .get(blockId))!.p as number;
   const id = uid();
   await db.prepare(
-    `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, position, ref, sign, pay_with)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, target, position, ref, sign, pay_with)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     id,
     blockId,
@@ -767,6 +769,7 @@ export async function createEntry(
     init.date ?? null,
     init.status ?? "pending",
     init.goalId ?? null,
+    init.target ?? null,
     pos,
     init.ref ?? null,
     init.sign ?? 1,
@@ -778,7 +781,7 @@ export async function createEntry(
 export async function updateEntry(
   userId: string,
   id: string,
-  patch: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "extra" | "ref" | "sign" | "payWith">>,
+  patch: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "target" | "extra" | "ref" | "sign" | "payWith">>,
 ) {
   const db = getDb();
   const current = await ownedEntry(userId, id);
@@ -795,6 +798,7 @@ export async function updateEntry(
   if (patch.date !== undefined) add("date", patch.date);
   if (patch.status !== undefined) add("status", patch.status);
   if (patch.goalId !== undefined) add("goal_id", patch.goalId);
+  if (patch.target !== undefined) add("target", patch.target);
   if (patch.ref !== undefined) add("ref", patch.ref);
   if (patch.sign !== undefined) add("sign", patch.sign);
   if (patch.payWith !== undefined) add("pay_with", patch.payWith);

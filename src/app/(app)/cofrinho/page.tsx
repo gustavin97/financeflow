@@ -71,7 +71,7 @@ export default function GoalsPage() {
         <div>
           <h1 className="text-[26px] font-semibold tracking-tight">Cofrinho</h1>
           <p className="mt-0.5 max-w-xl text-[15px] text-muted">
-            Metas de longo prazo. Cada linha das tabelas de cofrinho, na planilha mensal, aponta para
+            Metas de longo prazo. Cada linha das tabelas de economias, na planilha mensal, aponta (coluna “Cofrinho”) para
             uma meta e soma aqui automaticamente.
           </p>
         </div>
@@ -215,7 +215,7 @@ export default function GoalsPage() {
                           <td colSpan={8} className="!bg-[#fafbfb] !p-3">
                             {g.history.length === 0 ? (
                               <p className="text-[15px] text-muted">
-                                Nenhum aporte ainda. Na planilha do mês, escolha esta meta na coluna “Meta” de uma
+                                Nenhum aporte ainda. Na planilha do mês, escolha esta meta na coluna “Cofrinho” de uma
                                 tabela de cofrinho.
                               </p>
                             ) : (

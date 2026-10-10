@@ -31,6 +31,8 @@ export interface Entry {
   date: string | null;
   status: Status;
   goalId: string | null;
+  /** economias: meta própria da linha, em centavos. null = sem meta */
+  target: number | null;
   extra: Record<string, ExtraValue>;
   position: number;
   /** tabelas de total: de onde vem o valor da linha (ver lib/calc.ts) */

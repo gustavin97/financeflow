@@ -11,7 +11,7 @@ export type BlockPatch = Partial<
   >
 >;
 export type EntryPatch = Partial<
-  Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "extra" | "ref" | "sign" | "payWith">
+  Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "target" | "extra" | "ref" | "sign" | "payWith">
 >;
 export interface NewBlock {
   name: string;
