@@ -166,6 +166,8 @@ create table if not exists blocks (
   card_paid    integer,
   -- fatura fechada que vence no mês (centavos): compras que não estão na tabela
   card_closed  integer,
+  -- pagamentos avulsos do cartão (centavos): saem do saldo e liberam limite
+  card_extra   integer not null default 0,
   card_close   integer check (card_close between 1 and 31),
   card_due     integer check (card_due between 1 and 31),
   created_at   timestamptz not null default now()
@@ -173,6 +175,7 @@ create table if not exists blocks (
 create index if not exists idx_blocks_user_ym on blocks(user_id, ym);
 -- bancos criados antes da fatura fechada
 alter table blocks add column if not exists card_closed integer;
+alter table blocks add column if not exists card_extra integer not null default 0;
 
 -- ---------------------------------------------------------------------
 -- Linhas de cada tabela

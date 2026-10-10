@@ -3,7 +3,7 @@
 import { CalendarRange, Check, CreditCard, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CARD_META, KIND_META } from "@/lib/kinds";
-import { fmtBRL, fmtNum, fmtPct, fmtPlain } from "@/lib/money";
+import { fmtBRL, fmtNum, fmtPct, fmtPlain, parseMoney } from "@/lib/money";
 import { MONTHS_LONG, monthRange, todayIso } from "@/lib/dates";
 import { faturaDates, faturaYm, hasCycle } from "@/lib/card";
 import { refLabel, type MonthCalc, type Running } from "@/lib/calc";
@@ -753,6 +753,61 @@ function InstallmentTag({ entry, onEnd }: { entry: Entry; onEnd: (id: string) =>
 /* Cartão: limite, fatura e pagamento                                  */
 /* ------------------------------------------------------------------ */
 
+/** Novo pagamento de qualquer valor: soma aos pagamentos avulsos do cartão. */
+function ExtraPayment({ extra, onChange }: { extra: number; onChange: (total: number) => void }) {
+  const [text, setText] = useState("");
+  const [error, setError] = useState(false);
+  const pay = () => {
+    const v = parseMoney(text);
+    if (v === null || v <= 0) return setError(true);
+    onChange(extra + v);
+    setText("");
+    setError(false);
+  };
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(ev) => {
+          ev.preventDefault();
+          pay();
+        }}
+      >
+        <label className="text-muted" htmlFor="card-extra-pay">
+          Novo pagamento
+        </label>
+        <input
+          id="card-extra-pay"
+          className={`w-[130px] rounded-md border bg-white px-2 py-1 text-right ${error ? "border-[#c4361f]" : "border-line"}`}
+          inputMode="decimal"
+          placeholder="0,00"
+          value={text}
+          onChange={(ev) => {
+            setText(ev.target.value);
+            setError(false);
+          }}
+          aria-invalid={error}
+        />
+        <button type="submit" className="btn btn-sm" style={{ borderColor: CARD_META.color, color: CARD_META.color }}>
+          Pagar e liberar limite
+        </button>
+      </form>
+      {extra > 0 && (
+        <span className="flex items-center gap-2 text-muted">
+          Pagamentos avulsos: <span className="font-semibold text-ink">{fmtBRL(extra)}</span>
+          <button
+            className="hover:underline"
+            onClick={() => onChange(0)}
+            title="Apaga os pagamentos avulsos do mês e devolve o valor ao saldo"
+          >
+            Zerar
+          </button>
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CardBar({
   block,
   card,
@@ -771,7 +826,7 @@ function CardBar({
   running: Running | null;
   sourceLabel: string;
   onEditSource: () => void;
-  onPatch: (p: { budgetType?: "none" | "amount"; budgetValue?: number; cardPaid?: number | null; cardClosed?: number | null }) => void;
+  onPatch: (p: { budgetType?: "none" | "amount"; budgetValue?: number; cardPaid?: number | null; cardClosed?: number | null; cardExtra?: number }) => void;
   cycle: { start: string; close: string; due: string } | null;
   ym: string;
   misplaced: number;
@@ -782,7 +837,7 @@ function CardBar({
   const closed = card.closed;
   // limite ocupado: fatura da tabela + o que falta pagar da fatura fechada
   const used = card.limit !== null && card.available !== null ? card.limit - card.available : card.bill;
-  const owed = used - card.bill;
+  const owed = closed === null ? 0 : Math.max(0, closed - (paid ?? 0));
   const ratio = card.limit ? used / card.limit : 0;
   const over = card.available !== null && card.available < 0;
   const barColor = over ? "#c4361f" : ratio >= 0.8 ? "#d9822b" : CARD_META.color;
@@ -914,6 +969,8 @@ function CardBar({
           )}
         </span>
       </div>
+      {/* pagamentos avulsos: qualquer valor, a qualquer hora, libera limite */}
+      <ExtraPayment extra={card.extra} onChange={(cardExtra) => onPatch({ cardExtra })} />
       {(running || left !== 0) && (
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <span className="text-muted">

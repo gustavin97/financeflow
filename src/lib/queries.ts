@@ -65,6 +65,7 @@ function mapBlock(r: Row): Omit<Block, "entries"> {
     card: r.card === 1,
     cardPaid: r.card_paid ?? null,
     cardClosed: r.card_closed ?? null,
+    cardExtra: r.card_extra ?? 0,
     cardClose: r.card_close ?? null,
     cardDue: r.card_due ?? null,
   };
@@ -174,7 +175,7 @@ export async function deleteMember(userId: string, id: string) {
 async function carryBefore(userId: string, ym: string): Promise<Carry> {
   const db = getDb();
   // linhas de cartão (na tabela do cartão ou pagas com ele) só viram realizado
-  // quando a fatura é paga: aí conta o valor pago (card_paid)
+  // quando a fatura é paga: aí conta o valor pago (card_paid + pagamentos avulsos)
   const rows = await db
     .prepare(
       `SELECT b.kind AS kind,
@@ -194,7 +195,7 @@ async function carryBefore(userId: string, ym: string): Promise<Carry> {
   }
   const paid = (await db
     .prepare(
-      `SELECT COALESCE(SUM(card_paid), 0) AS p FROM blocks
+      `SELECT COALESCE(SUM(COALESCE(card_paid, 0) + card_extra), 0) AS p FROM blocks
         WHERE user_id = ? AND ym < ? AND card = 1 AND kind = 'expense'`,
     )
     .get(userId, ym))!;
@@ -628,13 +629,14 @@ export async function updateBlock(
     card?: boolean;
     cardPaid?: number | null;
     cardClosed?: number | null;
+    cardExtra?: number;
     cardClose?: number | null;
     cardDue?: number | null;
   },
 ) {
   const db = getDb();
   const current = await ownedBlock(userId, id);
-  if ((patch.card || patch.cardPaid != null || patch.cardClosed != null) && current.kind !== "expense")
+  if ((patch.card || patch.cardPaid != null || patch.cardClosed != null || !!patch.cardExtra) && current.kind !== "expense")
     throw new ApiError("Só tabelas de despesa podem ser cartão de crédito.");
   const cycle = patch.cardClose !== undefined || patch.cardDue !== undefined;
   if (cycle) {
@@ -656,12 +658,14 @@ export async function updateBlock(
         await db.prepare("UPDATE entries SET pay_with = NULL WHERE block_id = ?").run(id);
       } else {
         // deixou de ser cartão: as despesas pagas com ele voltam a sair do saldo
-        await db.prepare("UPDATE blocks SET card_paid = NULL, card_closed = NULL WHERE id = ?").run(id);
+        await db.prepare("UPDATE blocks SET card_paid = NULL, card_closed = NULL, card_extra = 0 WHERE id = ?").run(id);
         await db.prepare("UPDATE entries SET pay_with = NULL WHERE pay_with = ?").run(id);
       }
     }
     if (patch.cardPaid !== undefined)
       await db.prepare("UPDATE blocks SET card_paid = ? WHERE id = ?").run(patch.cardPaid, id);
+    if (patch.cardExtra !== undefined)
+      await db.prepare("UPDATE blocks SET card_extra = ? WHERE id = ?").run(patch.cardExtra, id);
     if (patch.cardClosed !== undefined)
       await db.prepare("UPDATE blocks SET card_closed = ? WHERE id = ?").run(patch.cardClosed, id);
     if (cycle) {

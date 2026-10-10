@@ -44,9 +44,11 @@ export interface CardInfo {
   paid: number | null;
   /** fatura fechada que vence no mês (compras fora da tabela); null = não informada */
   closed: number | null;
+  /** pagamentos avulsos (adiantamentos): saem do saldo e liberam limite */
+  extra: number;
   /** quanto o pagamento cobre: a fatura fechada, se informada; senão a fatura da tabela */
   due: number;
-  /** limite − fatura − o que falta pagar da fatura fechada */
+  /** limite − fatura − o que falta pagar da fatura fechada + pagamentos avulsos */
   available: number | null;
 }
 
@@ -64,8 +66,10 @@ export function cardInfo(card: Block, blocks: Block[]): CardInfo {
   const paid = card.cardPaid;
   // pagar a fatura fechada libera o limite que ela ocupa
   const owed = closed === null ? 0 : Math.max(0, closed - (paid ?? 0));
-  const available = limit === null ? null : limit - bill - owed;
-  return { limit, own, charges, chargesTotal, bill, paid, closed, due: closed ?? bill, available };
+  const extra = card.cardExtra;
+  // o limite usado não fica negativo: pagar além do devido não cria limite extra
+  const available = limit === null ? null : limit - Math.max(0, bill + owed - extra);
+  return { limit, own, charges, chargesTotal, bill, paid, closed, extra, due: closed ?? bill, available };
 }
 
 /**
@@ -76,7 +80,7 @@ export function cardInfo(card: Block, blocks: Block[]): CardInfo {
 export function cashTotals(b: Block, cards: Set<string>) {
   if (b.card && cards.has(b.id)) {
     // com a fatura fechada informada, é ela que se paga no mês; as compras da tabela vão para a próxima
-    return { total: b.cardClosed ?? b.entries.reduce((s, e) => s + e.amount, 0), done: b.cardPaid ?? 0 };
+    return { total: b.cardClosed ?? b.entries.reduce((s, e) => s + e.amount, 0), done: (b.cardPaid ?? 0) + b.cardExtra };
   }
   let total = 0;
   let done = 0;

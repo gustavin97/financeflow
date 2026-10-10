@@ -172,7 +172,7 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     .map((b, order) => {
       const card = cards.get(b.id);
       const spent = card
-        ? (card.paid ?? 0)
+        ? (card.paid ?? 0) + card.extra
         : b.entries.reduce((s, e) => (onCard(e, cardSet) || e.status !== "done" ? s : s + e.amount), 0);
       return { b, order, source: sourceOf(b), spent };
     });

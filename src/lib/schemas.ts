@@ -90,6 +90,7 @@ export const blockPatchSchema = z.object({
   card: z.boolean().optional(),
   cardPaid: cents.min(0).nullable().optional(),
   cardClosed: cents.min(0).nullable().optional(),
+  cardExtra: cents.min(0).optional(),
   cardClose: z.number().int().min(1, "Dia entre 1 e 31.").max(31, "Dia entre 1 e 31.").nullable().optional(),
   cardDue: z.number().int().min(1, "Dia entre 1 e 31.").max(31, "Dia entre 1 e 31.").nullable().optional(),
 });

@@ -65,6 +65,8 @@ export interface Block {
   cardPaid: number | null;
   /** cartão: valor da fatura fechada que vence no mês (centavos). null = não informada */
   cardClosed: number | null;
+  /** cartão: soma dos pagamentos avulsos (adiantamentos), em centavos; liberam limite */
+  cardExtra: number;
   /** cartão: dia do fechamento e do vencimento da fatura (null = não informado) */
   cardClose: number | null;
   cardDue: number | null;
