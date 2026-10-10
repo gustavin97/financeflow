@@ -160,27 +160,33 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   // cartão não consomem a fonte; o cartão consome só o valor pago da fatura.
   // Gastar das receitas de uma pessoa também consome o total da casa
   // (kind:income:<pessoa> faz parte de kind:income), senão o dinheiro contaria duas vezes.
+  // As economias guardam o que sobra: descontam todas as despesas pagas da
+  // fonte, mesmo as de tabelas que aparecem depois delas.
   const running = new Map<string, Running>();
-  const consumed = new Map<string, { total: number; names: string[] }>();
   const containers = (ref: string) => {
     const [head, k, who] = ref.split(":");
     return head === "kind" && who ? [ref, `kind:${k}`] : [ref];
   };
-  for (const b of blocks) {
-    if (b.kind !== "expense" && b.kind !== "savings") continue;
-    const source = sourceOf(b);
-    const used = consumed.get(source) ?? { total: 0, names: [] };
-    const start = cash(source) - used.total;
+  const spenders = blocks
+    .filter((b) => b.kind === "expense" || b.kind === "savings")
+    .map((b, order) => {
+      const card = cards.get(b.id);
+      const spent = card
+        ? (card.paid ?? 0)
+        : b.entries.reduce((s, e) => (onCard(e, cardSet) || e.status !== "done" ? s : s + e.amount), 0);
+      return { b, order, source: sourceOf(b), spent };
+    });
+  const comesBefore = (x: (typeof spenders)[number], y: (typeof spenders)[number]) =>
+    y.b.kind === "savings" && x.b.kind === "expense" ? true : x.order < y.order;
+  for (const s of spenders) {
+    const { b, source } = s;
+    const prior = spenders.filter((o) => o !== s && comesBefore(o, s) && containers(o.source).includes(source));
+    const start = cash(source) - prior.reduce((t, o) => t + o.spent, 0);
     let bal = start;
-    const card = cards.get(b.id);
     let after: number[] = [];
-    if (card) bal -= card.paid ?? 0;
+    if (cards.has(b.id)) bal -= s.spent;
     else after = b.entries.map((e) => (onCard(e, cardSet) || e.status !== "done" ? bal : (bal -= e.amount)));
-    running.set(b.id, { source, start, after, end: bal, sharedWith: [...used.names] });
-    for (const r of containers(source)) {
-      const u = consumed.get(r) ?? { total: 0, names: [] };
-      consumed.set(r, { total: u.total + (start - bal), names: [...u.names, b.name] });
-    }
+    running.set(b.id, { source, start, after, end: bal, sharedWith: prior.map((o) => o.b.name) });
   }
 
   // força a avaliação para detectar ciclos antes de desenhar
