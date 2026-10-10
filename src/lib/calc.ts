@@ -160,8 +160,10 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   // cartão não consomem a fonte; o cartão consome só o valor pago da fatura.
   // Gastar das receitas de uma pessoa também consome o total da casa
   // (kind:income:<pessoa> faz parte de kind:income), senão o dinheiro contaria duas vezes.
-  // As economias guardam o que sobra: descontam todas as despesas pagas da
-  // fonte, mesmo as de tabelas que aparecem depois delas.
+  // O dinheiro segue receitas → despesas → economias: as economias guardam a
+  // sobra das despesas pagas (mesmo de tabelas que aparecem depois delas) e
+  // as despesas não descontam as economias. O cartão é crédito: o pagamento
+  // dele não entra no saldo das outras tabelas.
   const running = new Map<string, Running>();
   const containers = (ref: string) => {
     const [head, k, who] = ref.split(":");
@@ -176,8 +178,11 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
         : b.entries.reduce((s, e) => (onCard(e, cardSet) || e.status !== "done" ? s : s + e.amount), 0);
       return { b, order, source: sourceOf(b), spent };
     });
-  const comesBefore = (x: (typeof spenders)[number], y: (typeof spenders)[number]) =>
-    y.b.kind === "savings" && x.b.kind === "expense" ? true : x.order < y.order;
+  const comesBefore = (x: (typeof spenders)[number], y: (typeof spenders)[number]) => {
+    if (cards.has(x.b.id)) return false;
+    if (x.b.kind === "savings") return y.b.kind === "savings" && x.order < y.order;
+    return y.b.kind === "savings" || x.order < y.order;
+  };
   for (const s of spenders) {
     const { b, source } = s;
     const prior = spenders.filter((o) => o !== s && comesBefore(o, s) && containers(o.source).includes(source));
