@@ -92,8 +92,8 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   for (const b of blocks) {
     if (b.kind === "total") continue;
     const t = cashTotals(b, cardSet);
-    // nas referências, um cartão vale a fatura inteira e uma receita só o que já foi recebido
-    plainTotals.set(b.id, cards.get(b.id)?.bill ?? (b.kind === "income" ? t.done : t.total));
+    // nas referências, um cartão vale a fatura inteira; receita e despesa só o que já foi recebido/pago
+    plainTotals.set(b.id, cards.get(b.id)?.bill ?? (b.kind === "income" || b.kind === "expense" ? t.done : t.total));
     for (const s of [scope("all"), scope(ownerScope(b, members))]) {
       if (b.kind === "income") (s.income += t.total), (s.incomeDone += t.done);
       else if (b.kind === "expense") (s.expense += t.total), (s.expenseDone += t.done);
@@ -167,7 +167,8 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     const card = cards.get(b.id);
     let after: number[] = [];
     if (card) bal -= card.paid ?? card.bill;
-    else after = b.entries.map((e) => (onCard(e, cardSet) ? bal : (bal -= e.amount)));
+    // despesa a pagar ainda não sai do saldo
+    else after = b.entries.map((e) => (onCard(e, cardSet) || (b.kind === "expense" && e.status !== "done") ? bal : (bal -= e.amount)));
     running.set(b.id, { source, start, after, end: bal, sharedWith: [...used.names] });
     for (const r of containers(source)) {
       const u = consumed.get(r) ?? { total: 0, names: [] };

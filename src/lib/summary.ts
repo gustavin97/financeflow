@@ -14,8 +14,8 @@ export function blockTotals(b: Block) {
       doneCount++;
     }
   }
-  // receita só entra no total depois de marcada como recebida
-  if (b.kind === "income") total = done;
+  // receita só entra no total depois de recebida, e despesa depois de paga
+  if (b.kind === "income" || b.kind === "expense") total = done;
   return { total, done, pending: total - done, count, doneCount };
 }
 

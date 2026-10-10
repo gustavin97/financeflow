@@ -53,9 +53,9 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
       />
       <Cell
         label="Despesas"
-        value={s.expense}
+        value={s.expenseDone}
         color="#c4361f"
-        lines={[`Pago: ${fmtBRL(s.expenseDone)}`, `A pagar: ${fmtBRL(s.expense - s.expenseDone)}`]}
+        lines={[`Previsto: ${fmtBRL(s.expense)}`, `A pagar: ${fmtBRL(s.expense - s.expenseDone)}`]}
       />
       <Cell
         label="Economias"
@@ -88,8 +88,13 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
  */
 export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthCalc }) {
   if (!members.length) return null;
-  // receitas só contam depois de recebidas
-  const received = (s: ScopeTotals) => ({ ...s, income: s.incomeDone, balance: s.incomeDone - s.expense - s.savings });
+  // receitas só contam depois de recebidas, e despesas depois de pagas
+  const received = (s: ScopeTotals) => ({
+    ...s,
+    income: s.incomeDone,
+    expense: s.expenseDone,
+    balance: s.incomeDone - s.expenseDone - s.savings,
+  });
   const shared = received(calc.scopes.get("shared")!);
   const all = received(calc.scopes.get("all")!);
   const peopleIncome = members.reduce((s, m) => s + (calc.scopes.get(m.id)?.incomeDone ?? 0), 0);
