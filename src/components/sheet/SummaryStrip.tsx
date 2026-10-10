@@ -1,8 +1,10 @@
+import { worstLevel, type FinAlert } from "@/lib/alerts";
 import type { MonthCalc, ScopeTotals } from "@/lib/calc";
 import { SHARED_COLOR } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct } from "@/lib/money";
 import type { MonthSummary } from "@/lib/summary";
 import type { Carry, Member } from "@/lib/types";
+import { HealthBadge } from "../AlertsPanel";
 
 function tone(v: number) {
   if (v > 0) return "#107c41";
@@ -86,7 +88,12 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
  * Resumo por pessoa. As contas do conjunto são divididas na proporção da renda
  * de cada um, para mostrar quanto realmente sobra para cada pessoa.
  */
-export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthCalc }) {
+export function PeopleTable({ members, calc, alerts }: { members: Member[]; calc: MonthCalc; alerts: FinAlert[] }) {
+  // saúde de cada um: o pior sinalizador dele
+  const status = (scope: string) => {
+    const mine = alerts.filter((a) => a.scope === scope);
+    return { level: worstLevel(mine), top: mine[0]?.title ?? "" };
+  };
   if (!members.length) return null;
   // receitas só contam depois de recebidas, e despesas depois de pagas
   const received = (s: ScopeTotals) => ({
@@ -109,7 +116,7 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
 
   return (
     <div className="overflow-x-auto panel">
-      <table className="sheet" style={{ minWidth: 960 }}>
+      <table className="sheet" style={{ minWidth: 1090 }}>
         <thead>
           <tr>
             <th style={{ width: 220 }}>Por pessoa</th>
@@ -121,6 +128,7 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
               Parte no conjunto
             </th>
             <th className="!text-right">Sobra final</th>
+            <th style={{ width: 130 }}>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -143,6 +151,9 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
               <td className="!px-2 text-right font-semibold" style={{ color: tone(r.final) }}>
                 {fmtNum(r.final)}
               </td>
+              <td className="!px-2" title={status(r.id).top}>
+                <HealthBadge level={status(r.id).level} />
+              </td>
             </tr>
           ))}
           {shared.income + shared.expense + shared.savings > 0 && (
@@ -161,6 +172,9 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
               </td>
               <td className="!px-2 text-right text-muted">{sharedOut ? fmtNum(sharedOut) : ""}</td>
               <td className="!px-2 text-right text-faint">dividido</td>
+              <td className="!px-2" title={status("shared").top}>
+                <HealthBadge level={status("shared").level} />
+              </td>
             </tr>
           )}
         </tbody>
@@ -177,6 +191,7 @@ export function PeopleTable({ members, calc }: { members: Member[]; calc: MonthC
             <td className="text-right" style={{ color: tone(all.balance) }}>
               {fmtNum(all.balance)}
             </td>
+            <td />
           </tr>
         </tfoot>
       </table>

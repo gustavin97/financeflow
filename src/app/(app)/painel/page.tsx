@@ -3,7 +3,7 @@
 import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Minus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertsPanel } from "@/components/AlertsPanel";
+import { ScopedAlerts } from "@/components/AlertsPanel";
 import { monthAlerts } from "@/lib/alerts";
 import { buildCalc } from "@/lib/calc";
 import { api, errMsg } from "@/lib/client";
@@ -170,7 +170,7 @@ export default function DashboardPage() {
       {data && cur && point && (
         <div className="space-y-4">
           <Kpis point={point} prev={prevPoint} prevYm={prevYm} />
-          {scope === "all" && <AlertsPanel alerts={alerts} max={4} />}
+          <ScopedAlerts alerts={alerts} members={data.members} filter={scope} max={4} />
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card

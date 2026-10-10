@@ -4,7 +4,7 @@ import { CalendarCheck, ChevronLeft, ChevronRight, FileUp, Plus, Users, X } from
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { AlertsPanel } from "@/components/AlertsPanel";
+import { ScopedAlerts } from "@/components/AlertsPanel";
 import { MembersDialog } from "@/components/MembersEditor";
 import { BlockTable } from "@/components/sheet/BlockTable";
 import { NewBlockDialog } from "@/components/sheet/blockDialogs";
@@ -167,9 +167,8 @@ function MonthView({ ym }: { ym: string }) {
               />
             )}
             <SummaryStrip s={summary} carry={data.carry} />
-            <AlertsPanel alerts={alerts} />
             {members.length > 0 ? (
-              <PeopleTable members={members} calc={calc} />
+              <PeopleTable members={members} calc={calc} alerts={alerts} />
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-2 border border-dashed border-[#aab3bb] bg-white/60 px-4 py-2.5 text-[15px] text-muted">
                 <span>Planilha do casal? Cadastre as pessoas para ter tabelas de cada um e o saldo de cada pessoa.</span>
@@ -178,6 +177,7 @@ function MonthView({ ym }: { ym: string }) {
                 </button>
               </div>
             )}
+            <ScopedAlerts alerts={alerts} members={members} filter={filter} />
             <DistributionBar blocks={data.blocks} income={summary.income} />
 
             {members.length > 0 && (
