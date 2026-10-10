@@ -120,11 +120,11 @@ export function monthAlerts(input: {
         title: `Fatura de “${b.name}” passou do limite em ${fmtBRL(-c.available)}`,
         detail: `Limite ${fmtBRL(c.limit!)} · fatura ${fmtBRL(c.bill)}.`,
       });
-    else if (c.limit && c.bill >= c.limit * 0.8)
+    else if (c.limit && c.limit - c.available! >= c.limit * 0.8)
       out.push({
         id: `card-${id}`,
         level: "warning",
-        title: `“${b.name}” já usou ${fmtPct(c.bill / c.limit)} do limite`,
+        title: `“${b.name}” já usou ${fmtPct((c.limit - c.available!) / c.limit)} do limite`,
         detail: `Disponível ${fmtBRL(c.available!)} de ${fmtBRL(c.limit)}.`,
       });
   }
@@ -136,12 +136,12 @@ export function monthAlerts(input: {
       const b = blocks.find((x) => x.id === id)!;
       if (!hasCycle(b)) continue;
       const f = faturaDates(ym, b.cardClose!, b.cardDue!);
-      const unpaid = c.paid === null && c.bill > 0;
+      const unpaid = c.paid === null && c.due > 0;
       if (unpaid && f.due < today)
         out.push({
           id: `card-due-${id}`,
           level: "danger",
-          title: `Fatura de “${b.name}” venceu dia ${dayOf(f.due)} (${fmtBRL(c.bill)})`,
+          title: `Fatura de “${b.name}” venceu dia ${dayOf(f.due)} (${fmtBRL(c.due)})`,
           detail: "Se já pagou, marque a fatura como paga na tabela do cartão.",
         });
       else if (unpaid && f.due <= addDays(today, 3))
@@ -150,8 +150,8 @@ export function monthAlerts(input: {
           level: "warning",
           title:
             f.due === today
-              ? `Fatura de “${b.name}” vence hoje (${fmtBRL(c.bill)})`
-              : `Fatura de “${b.name}” vence dia ${dayOf(f.due)} (${fmtBRL(c.bill)})`,
+              ? `Fatura de “${b.name}” vence hoje (${fmtBRL(c.due)})`
+              : `Fatura de “${b.name}” vence dia ${dayOf(f.due)} (${fmtBRL(c.due)})`,
         });
       // o fechamento da próxima fatura (a deste mês pode já ter fechado no mês anterior)
       const next = faturaDates(addMonthsYm(ym, 1), b.cardClose!, b.cardDue!);
@@ -232,7 +232,7 @@ export function monthAlerts(input: {
       const card = calc.cards.get(b.id);
       if (card) {
         // fatura ainda não paga: sai do caixa (sem data, o cenário mais prudente é hoje)
-        if (card.paid === null && card.bill > 0) moves.push({ date: today, v: -card.bill });
+        if (card.paid === null && card.due > 0) moves.push({ date: today, v: -card.due });
         continue;
       }
       const sign = b.kind === "income" ? 1 : -1;

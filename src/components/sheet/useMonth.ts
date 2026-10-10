@@ -7,7 +7,7 @@ import type { Block, Entry, ExtraColumn, Kind, Member, MonthPayload, Status } fr
 export type BlockPatch = Partial<
   Pick<
     Block,
-    "name" | "budgetType" | "budgetValue" | "columns" | "memberId" | "source" | "card" | "cardPaid" | "cardClose" | "cardDue"
+    "name" | "budgetType" | "budgetValue" | "columns" | "memberId" | "source" | "card" | "cardPaid" | "cardClosed" | "cardClose" | "cardDue"
   >
 >;
 export type EntryPatch = Partial<
@@ -102,7 +102,7 @@ export function useMonth(ym: string) {
 
   const patchBlock = (id: string, patch: BlockPatch) => {
     // mesmas regras do servidor ao ligar/desligar o cartão
-    const local: BlockPatch = patch.card === false ? { ...patch, cardPaid: null } : patch;
+    const local: BlockPatch = patch.card === false ? { ...patch, cardPaid: null, cardClosed: null } : patch;
     mapBlocks((b) => {
       if (b.id !== id) {
         if (patch.card === false && b.entries.some((e) => e.payWith === id))

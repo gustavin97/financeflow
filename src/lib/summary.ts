@@ -42,7 +42,11 @@ export interface CardInfo {
   /** fatura = own + chargesTotal */
   bill: number;
   paid: number | null;
-  /** limite − fatura */
+  /** fatura fechada que vence no mês (compras fora da tabela); null = não informada */
+  closed: number | null;
+  /** quanto o pagamento cobre: a fatura fechada, se informada; senão a fatura da tabela */
+  due: number;
+  /** limite − fatura − o que falta pagar da fatura fechada */
   available: number | null;
 }
 
@@ -56,7 +60,12 @@ export function cardInfo(card: Block, blocks: Block[]): CardInfo {
   const chargesTotal = charges.reduce((s, c) => s + c.entry.amount, 0);
   const bill = own + chargesTotal;
   const limit = card.budgetType === "amount" && card.budgetValue > 0 ? Math.round(card.budgetValue) : null;
-  return { limit, own, charges, chargesTotal, bill, paid: card.cardPaid, available: limit === null ? null : limit - bill };
+  const closed = card.cardClosed;
+  const paid = card.cardPaid;
+  // pagar a fatura fechada libera o limite que ela ocupa
+  const owed = closed === null ? 0 : Math.max(0, closed - (paid ?? 0));
+  const available = limit === null ? null : limit - bill - owed;
+  return { limit, own, charges, chargesTotal, bill, paid, closed, due: closed ?? bill, available };
 }
 
 /**
@@ -66,7 +75,8 @@ export function cardInfo(card: Block, blocks: Block[]): CardInfo {
  */
 export function cashTotals(b: Block, cards: Set<string>) {
   if (b.card && cards.has(b.id)) {
-    return { total: b.entries.reduce((s, e) => s + e.amount, 0), done: b.cardPaid ?? 0 };
+    // com a fatura fechada informada, é ela que se paga no mês; as compras da tabela vão para a próxima
+    return { total: b.cardClosed ?? b.entries.reduce((s, e) => s + e.amount, 0), done: b.cardPaid ?? 0 };
   }
   let total = 0;
   let done = 0;

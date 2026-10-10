@@ -239,9 +239,13 @@ export function BlockTable({
           <MenuItem onClick={() => setDialog("columns")}>Colunas extras</MenuItem>
           {card ? (
             <MenuItem
-              onClick={() => actions.patchBlock(block.id, { cardPaid: card.paid === null ? card.bill : null })}
+              onClick={() => actions.patchBlock(block.id, { cardPaid: card.paid === null ? card.due : null })}
             >
-              {card.paid === null ? "Marcar fatura como paga" : "Desmarcar pagamento da fatura"}
+              {card.paid !== null
+                ? "Desmarcar pagamento da fatura"
+                : card.closed !== null
+                  ? "Pagar fatura fechada"
+                  : "Marcar fatura como paga"}
             </MenuItem>
           ) : (
             count > 0 && (
@@ -767,7 +771,7 @@ function CardBar({
   running: Running | null;
   sourceLabel: string;
   onEditSource: () => void;
-  onPatch: (p: { budgetType?: "none" | "amount"; budgetValue?: number; cardPaid?: number | null }) => void;
+  onPatch: (p: { budgetType?: "none" | "amount"; budgetValue?: number; cardPaid?: number | null; cardClosed?: number | null }) => void;
   cycle: { start: string; close: string; due: string } | null;
   ym: string;
   misplaced: number;
@@ -775,10 +779,15 @@ function CardBar({
   onMoveAll: () => void;
 }) {
   const paid = card.paid;
-  const ratio = card.limit ? card.bill / card.limit : 0;
+  const closed = card.closed;
+  // limite ocupado: fatura da tabela + o que falta pagar da fatura fechada
+  const used = card.limit !== null && card.available !== null ? card.limit - card.available : card.bill;
+  const owed = used - card.bill;
+  const ratio = card.limit ? used / card.limit : 0;
   const over = card.available !== null && card.available < 0;
   const barColor = over ? "#c4361f" : ratio >= 0.8 ? "#d9822b" : CARD_META.color;
-  const left = paid !== null ? card.bill - paid : 0;
+  const left = paid !== null ? card.due - paid : 0;
+  const what = closed !== null ? "fatura fechada" : "fatura";
 
   return (
     <div className="space-y-2 border-t border-grid bg-[#fafbfb] px-3 py-2 text-[14px]">
@@ -825,13 +834,14 @@ function CardBar({
           </span>
         </label>
         <span className="text-muted">
-          Fatura: <span className="font-semibold text-ink">{fmtBRL(card.bill)}</span>
+          {closed !== null ? "Fatura aberta" : "Fatura"}: <span className="font-semibold text-ink">{fmtBRL(card.bill)}</span>
           {card.chargesTotal > 0 && (
             <span>
               {" "}
               ({fmtBRL(card.own)} aqui + {fmtBRL(card.chargesTotal)} de outras tabelas)
             </span>
           )}
+          {owed > 0 && <span> + {fmtBRL(owed)} da fatura fechada sem pagar</span>}
         </span>
         {card.available !== null ? (
           <span className="font-semibold" style={{ color: over ? "#c4361f" : "#107c41" }}>
@@ -869,6 +879,16 @@ function CardBar({
           )}
         </span>
         <span className="flex flex-wrap items-center gap-2">
+          <span className="text-muted" title="Valor da fatura que já fechou e vence neste mês, como o banco cobrou">
+            Fatura fechada
+          </span>
+          <span className="w-[130px] overflow-hidden rounded-md border border-line bg-white">
+            <MoneyCell
+              label="Valor da fatura fechada"
+              value={closed ?? 0}
+              onCommit={(v) => onPatch({ cardClosed: v > 0 ? v : null })}
+            />
+          </span>
           <span className="text-muted">Valor pago</span>
           <span className="w-[130px] overflow-hidden rounded-md border border-line bg-white">
             <MoneyCell label="Valor pago da fatura" value={paid ?? 0} onCommit={(v) => onPatch({ cardPaid: v > 0 ? v : null })} />
@@ -876,11 +896,11 @@ function CardBar({
           {paid === null ? (
             <button
               className="btn btn-sm"
-              disabled={card.bill <= 0}
-              onClick={() => onPatch({ cardPaid: card.bill })}
+              disabled={card.due <= 0}
+              onClick={() => onPatch({ cardPaid: card.due })}
               style={{ borderColor: CARD_META.color, color: CARD_META.color }}
             >
-              Pagar fatura ({fmtBRL(card.bill)})
+              {closed !== null ? "Pagar fatura fechada" : "Pagar fatura"} ({fmtBRL(card.due)})
             </button>
           ) : (
             <>
@@ -897,9 +917,9 @@ function CardBar({
       {(running || left !== 0) && (
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
           <span className="text-muted">
-            {left > 0 && `Ficaram ${fmtBRL(left)} da fatura sem pagar. `}
-            {left < 0 && `Pago ${fmtBRL(-left)} a mais que a fatura. `}
-            {paid === null && card.bill > 0 && "Até pagar, a fatura conta como prevista."}
+            {left > 0 && `Ficaram ${fmtBRL(left)} da ${what} sem pagar. `}
+            {left < 0 && `Pago ${fmtBRL(-left)} a mais que a ${what}. `}
+            {paid === null && card.due > 0 && `Até pagar, a ${what} conta como prevista.`}
           </span>
           {running && (
             <span className="font-semibold" style={{ color: running.end < 0 ? "#c4361f" : "#107c41" }}>

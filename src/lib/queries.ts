@@ -64,6 +64,7 @@ function mapBlock(r: Row): Omit<Block, "entries"> {
     source: r.source ?? null,
     card: r.card === 1,
     cardPaid: r.card_paid ?? null,
+    cardClosed: r.card_closed ?? null,
     cardClose: r.card_close ?? null,
     cardDue: r.card_due ?? null,
   };
@@ -626,13 +627,14 @@ export async function updateBlock(
     source?: string | null;
     card?: boolean;
     cardPaid?: number | null;
+    cardClosed?: number | null;
     cardClose?: number | null;
     cardDue?: number | null;
   },
 ) {
   const db = getDb();
   const current = await ownedBlock(userId, id);
-  if ((patch.card || patch.cardPaid != null) && current.kind !== "expense")
+  if ((patch.card || patch.cardPaid != null || patch.cardClosed != null) && current.kind !== "expense")
     throw new ApiError("Só tabelas de despesa podem ser cartão de crédito.");
   const cycle = patch.cardClose !== undefined || patch.cardDue !== undefined;
   if (cycle) {
@@ -654,12 +656,14 @@ export async function updateBlock(
         await db.prepare("UPDATE entries SET pay_with = NULL WHERE block_id = ?").run(id);
       } else {
         // deixou de ser cartão: as despesas pagas com ele voltam a sair do saldo
-        await db.prepare("UPDATE blocks SET card_paid = NULL WHERE id = ?").run(id);
+        await db.prepare("UPDATE blocks SET card_paid = NULL, card_closed = NULL WHERE id = ?").run(id);
         await db.prepare("UPDATE entries SET pay_with = NULL WHERE pay_with = ?").run(id);
       }
     }
     if (patch.cardPaid !== undefined)
       await db.prepare("UPDATE blocks SET card_paid = ? WHERE id = ?").run(patch.cardPaid, id);
+    if (patch.cardClosed !== undefined)
+      await db.prepare("UPDATE blocks SET card_closed = ? WHERE id = ?").run(patch.cardClosed, id);
     if (cycle) {
       // o cartão é o mesmo nos meses seguintes: eles acompanham a mudança
       const sets = [
