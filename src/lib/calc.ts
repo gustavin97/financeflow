@@ -147,9 +147,17 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
 
   const sourceOf = (b: Block) => b.source || defaultSource(b, members);
 
+  /** Como resolve, mas as receitas valem só o que já foi recebido. */
+  function cash(ref: string): number {
+    const [head, a, b] = ref.split(":");
+    if (head === "kind" && a === "income") return scopes.get(b ?? "all")?.incomeDone ?? 0;
+    return resolve(ref);
+  }
+
+  // O saldo é o dinheiro em conta (débito): parte do que já foi recebido e
   // cada fonte vai sendo consumida pelas tabelas na ordem em que aparecem.
-  // Linhas pagas com cartão não consomem a fonte; o cartão consome a fatura
-  // (ou o valor pago, quando já foi paga).
+  // Só saem do saldo despesas pagas e economias guardadas. Linhas pagas com
+  // cartão não consomem a fonte; o cartão consome só o valor pago da fatura.
   // Gastar das receitas de uma pessoa também consome o total da casa
   // (kind:income:<pessoa> faz parte de kind:income), senão o dinheiro contaria duas vezes.
   const running = new Map<string, Running>();
@@ -162,13 +170,12 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     if (b.kind !== "expense" && b.kind !== "savings") continue;
     const source = sourceOf(b);
     const used = consumed.get(source) ?? { total: 0, names: [] };
-    const start = resolve(source) - used.total;
+    const start = cash(source) - used.total;
     let bal = start;
     const card = cards.get(b.id);
     let after: number[] = [];
-    if (card) bal -= card.paid ?? card.bill;
-    // despesa a pagar ainda não sai do saldo
-    else after = b.entries.map((e) => (onCard(e, cardSet) || (b.kind === "expense" && e.status !== "done") ? bal : (bal -= e.amount)));
+    if (card) bal -= card.paid ?? 0;
+    else after = b.entries.map((e) => (onCard(e, cardSet) || e.status !== "done" ? bal : (bal -= e.amount)));
     running.set(b.id, { source, start, after, end: bal, sharedWith: [...used.names] });
     for (const r of containers(source)) {
       const u = consumed.get(r) ?? { total: 0, names: [] };
