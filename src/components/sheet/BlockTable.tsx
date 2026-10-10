@@ -76,7 +76,7 @@ export function BlockTable({
   const color = card ? CARD_META.color : meta.color;
   const { total: ownTotal, count, doneCount } = blockTotals(block);
   // o cartão mostra a fatura inteira: compras da própria tabela + despesas pagas com ele
-  const total = card ? card.bill : ownTotal;
+  const total = card ? card.net : ownTotal;
   const [dialog, setDialog] = useState<"budget" | "columns" | "settings" | "installment" | null>(null);
   const running = calc.running.get(block.id) ?? null;
   const owner = members.find((m) => m.id === block.memberId) ?? null;
@@ -889,11 +889,17 @@ function CardBar({
           </span>
         </label>
         <span className="text-muted">
-          {closed !== null ? "Fatura aberta" : "Fatura"}: <span className="font-semibold text-ink">{fmtBRL(card.bill)}</span>
+          {closed !== null ? "Fatura aberta" : "Fatura"}: <span className="font-semibold text-ink">{fmtBRL(card.net)}</span>
           {card.chargesTotal > 0 && (
             <span>
               {" "}
               ({fmtBRL(card.own)} aqui + {fmtBRL(card.chargesTotal)} de outras tabelas)
+            </span>
+          )}
+          {card.extra > 0 && (
+            <span>
+              {" "}
+              ({fmtBRL(card.bill)} em compras − {fmtBRL(card.extra)} pagos)
             </span>
           )}
           {owed > 0 && <span> + {fmtBRL(owed)} da fatura fechada sem pagar</span>}

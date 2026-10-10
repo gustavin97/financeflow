@@ -44,8 +44,10 @@ export interface CardInfo {
   paid: number | null;
   /** fatura fechada que vence no mês (compras fora da tabela); null = não informada */
   closed: number | null;
-  /** pagamentos avulsos (adiantamentos): saem do saldo e liberam limite */
+  /** pagamentos avulsos (adiantamentos): saem do saldo e abatem o gasto */
   extra: number;
+  /** gasto do cartão: fatura − pagamentos avulsos (não fica negativo) */
+  net: number;
   /** quanto o pagamento cobre: a fatura fechada, se informada; senão a fatura da tabela */
   due: number;
   /** limite − fatura − o que falta pagar da fatura fechada + pagamentos avulsos */
@@ -69,7 +71,7 @@ export function cardInfo(card: Block, blocks: Block[]): CardInfo {
   const extra = card.cardExtra;
   // o limite usado não fica negativo: pagar além do devido não cria limite extra
   const available = limit === null ? null : limit - Math.max(0, bill + owed - extra);
-  return { limit, own, charges, chargesTotal, bill, paid, closed, extra, due: closed ?? bill, available };
+  return { limit, own, charges, chargesTotal, bill, paid, closed, extra, net: Math.max(0, bill - extra), due: closed ?? bill, available };
 }
 
 /**
