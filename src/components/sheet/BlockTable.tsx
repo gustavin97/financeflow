@@ -168,7 +168,7 @@ export function BlockTable({
     128 +
     (showSaldo ? 128 : 0) +
     152 +
-    (isSavings ? 128 + 166 : 0) +
+    (isSavings ? 170 + 166 : 0) +
     (showStatus ? 128 : 0) +
     (showPayWith ? 150 : 0) +
     extras.length * 156 +
@@ -282,7 +282,7 @@ export function BlockTable({
             <col style={{ width: 152 }} />
             {isSavings && (
               <>
-                <col style={{ width: 128 }} />
+                <col style={{ width: 170 }} />
                 <col style={{ width: 166 }} />
               </>
             )}
@@ -650,6 +650,7 @@ function EntryRow({
             onCommit={(v) => patch({ target: v > 0 ? v : null })}
             onNav={(d) => navigate(i, "target", d)}
           />
+          {!!e.target && <TargetProgress target={e.target} saved={e.status === "done" ? e.amount : 0} color={meta.color} />}
         </td>
       )}
       {block.kind === "savings" && (
@@ -702,6 +703,29 @@ function EntryRow({
       ))}
       <td />
     </tr>
+  );
+}
+
+/** Barra da meta da linha: só conta o valor depois de marcado como guardado. */
+function TargetProgress({ target, saved, color }: { target: number; saved: number; color: string }) {
+  const pct = Math.min(1, Math.max(0, saved / target));
+  const reached = saved >= target;
+  return (
+    <div className="px-2 pb-1.5">
+      <div
+        className="h-[6px] bg-[#e3e7eb]"
+        role="progressbar"
+        aria-valuenow={Math.round(pct * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Progresso da meta"
+      >
+        <div className="h-full" style={{ width: `${pct * 100}%`, background: reached ? "#107c41" : color }} />
+      </div>
+      <p className={`mt-0.5 text-right text-[13px] leading-tight ${reached ? "font-semibold text-brand" : "text-muted"}`}>
+        {reached ? "Meta atingida" : `Falta ${fmtNum(target - saved)} · ${fmtPct(pct)}`}
+      </p>
+    </div>
   );
 }
 
