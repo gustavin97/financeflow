@@ -174,12 +174,12 @@ export async function deleteMember(userId: string, id: string) {
 /** Saldo acumulado de todos os meses anteriores a `ym`. */
 async function carryBefore(userId: string, ym: string): Promise<Carry> {
   const db = getDb();
-  // linhas de cartão (na tabela do cartão ou pagas com ele) não entram: o
+  // só linhas marcadas contam. Linhas de cartão (na tabela do cartão ou pagas com ele) não entram: o
   // pagamento da fatura é lançado como linha numa tabela de despesas
   const rows = await db
     .prepare(
       `SELECT b.kind AS kind,
-              COALESCE(SUM(CASE WHEN b.card = 0 AND c.id IS NULL THEN e.amount ELSE 0 END), 0) AS total,
+              COALESCE(SUM(CASE WHEN e.status = 'done' AND b.card = 0 AND c.id IS NULL THEN e.amount ELSE 0 END), 0) AS total,
               COALESCE(SUM(CASE WHEN e.status = 'done' AND b.card = 0 AND c.id IS NULL THEN e.amount ELSE 0 END), 0) AS done
          FROM entries e JOIN blocks b ON b.id = e.block_id
          LEFT JOIN blocks c ON c.id = e.pay_with AND c.card = 1 AND c.kind = 'expense'
@@ -1303,7 +1303,7 @@ export async function annual(userId: string, year: number): Promise<AnnualPayloa
   const db = getDb();
   const rows = await db
     .prepare(
-      `SELECT b.ym AS ym, b.kind AS kind, COALESCE(SUM(e.amount), 0) AS total
+      `SELECT b.ym AS ym, b.kind AS kind, COALESCE(SUM(CASE WHEN e.status = 'done' THEN e.amount ELSE 0 END), 0) AS total
          FROM blocks b LEFT JOIN entries e ON e.block_id = b.id
         WHERE b.user_id = ? AND b.ym LIKE ? AND b.kind != 'total'
         GROUP BY b.ym, b.kind`,
@@ -1322,7 +1322,7 @@ export async function annual(userId: string, year: number): Promise<AnnualPayloa
   const categories = (
     await db
       .prepare(
-        `SELECT MIN(b.name) AS name, b.kind AS kind, COALESCE(SUM(e.amount), 0) AS total
+        `SELECT MIN(b.name) AS name, b.kind AS kind, COALESCE(SUM(CASE WHEN e.status = 'done' THEN e.amount ELSE 0 END), 0) AS total
            FROM blocks b LEFT JOIN entries e ON e.block_id = b.id
           WHERE b.user_id = ? AND b.ym LIKE ? AND b.kind != 'total'
           GROUP BY lower(b.name), b.kind

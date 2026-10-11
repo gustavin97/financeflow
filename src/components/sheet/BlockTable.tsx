@@ -7,7 +7,7 @@ import { fmtBRL, fmtNum, fmtPct, fmtPlain, parseMoney } from "@/lib/money";
 import { MONTHS_LONG, monthRange, todayIso } from "@/lib/dates";
 import { faturaDates, faturaYm, hasCycle } from "@/lib/card";
 import { refLabel, type MonthCalc, type Running } from "@/lib/calc";
-import { blockTotals, budgetLimit, type CardInfo } from "@/lib/summary";
+import { blockTotals, budgetLimit, counts, type CardInfo } from "@/lib/summary";
 import type { Block, Entry, ExtraColumn, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
@@ -111,7 +111,6 @@ export function BlockTable({
   // cartões em que as linhas desta despesa podem ser lançadas
   const cards = card || block.kind !== "expense" ? [] : blocks.filter((b) => calc.cards.has(b.id));
   const showPayWith = cards.length > 0;
-  const showStatus = !card;
   const showSaldo = card ? card.limit !== null : !!running;
   const onCardTotal = showPayWith
     ? block.entries.reduce((s, e) => s + (e.payWith && calc.cards.has(e.payWith) ? e.amount : 0), 0)
@@ -122,8 +121,8 @@ export function BlockTable({
   let chargeSaldo: number[] = [];
   if (card && card.limit !== null) {
     let bal = card.limit;
-    saldo = block.entries.map((e) => (bal -= e.amount));
-    chargeSaldo = card.charges.map((c) => (bal -= c.entry.amount));
+    saldo = block.entries.map((e) => (counts(e) ? (bal -= e.amount) : bal));
+    chargeSaldo = card.charges.map((c) => (counts(c.entry) ? (bal -= c.entry.amount) : bal));
   }
   const saldoEnd = card ? (card.available ?? 0) : (running?.end ?? 0);
 
@@ -167,7 +166,7 @@ export function BlockTable({
     (showSaldo ? 128 : 0) +
     152 +
     (isSavings ? 128 : 0) +
-    (showStatus ? 128 : 0) +
+    128 +
     (showPayWith ? 150 : 0) +
     extras.length * 156 +
     40;
@@ -176,7 +175,7 @@ export function BlockTable({
   const base = running ? calc.resolve(running.source) : income;
   const limit = budgetLimit(block, base);
   const cols =
-    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + (showStatus ? 1 : 0) + (showPayWith ? 1 : 0) + extras.length;
+    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + 1 + (showPayWith ? 1 : 0) + extras.length;
 
   return (
     <section className="panel-open" aria-label={`Tabela ${block.name}`}>
@@ -238,6 +237,13 @@ export function BlockTable({
           </MenuItem>
           <MenuItem onClick={() => setDialog("columns")}>Colunas extras</MenuItem>
           {card ? (
+            <>
+            {count > 0 && (
+              <>
+                <MenuItem onClick={() => actions.completeBlock(block.id, "done")}>{CARD_META.doneAll}</MenuItem>
+                <MenuItem onClick={() => actions.completeBlock(block.id, "pending")}>Desmarcar todos</MenuItem>
+              </>
+            )}
             <MenuItem
               onClick={() => actions.patchBlock(block.id, { cardPaid: card.paid === null ? card.due : null })}
             >
@@ -247,6 +253,7 @@ export function BlockTable({
                   ? "Pagar fatura fechada"
                   : "Marcar fatura como paga"}
             </MenuItem>
+            </>
           ) : (
             count > 0 && (
               <>
@@ -281,7 +288,7 @@ export function BlockTable({
             {showSaldo && <col style={{ width: 128 }} />}
             <col style={{ width: 152 }} />
             {isSavings && <col style={{ width: 128 }} />}
-            {showStatus && <col style={{ width: 128 }} />}
+            <col style={{ width: 128 }} />
             {showPayWith && <col style={{ width: 150 }} />}
             {extras.map((c) => (
               <col key={c.id} style={{ width: 156 }} />
@@ -310,7 +317,7 @@ export function BlockTable({
                 ))}
               <th>{card ? "Data" : meta.dateLabel}</th>
               {isSavings && <th className="!text-right">Meta (R$)</th>}
-              {showStatus && <th>Status</th>}
+              <th title="Só as linhas marcadas entram no total">Status</th>
               {showPayWith && <th title="Saldo: sai do dinheiro da tabela. Cartão: entra na fatura e desconta o limite">Pagar com</th>}
               {extras.map((c) => (
                 <th key={c.id} title={c.name} className={c.type === "currency" || c.type === "number" ? "!text-right" : ""}>
@@ -341,7 +348,6 @@ export function BlockTable({
                 actions={actions}
                 navigate={navigate}
                 saldo={showSaldo ? (saldo[i] ?? 0) : null}
-                showStatus={showStatus}
                 cards={showPayWith ? cards : null}
                 onMoveFatura={(cardId, id) =>
                   cardId === block.id ? moveToFatura([id]) : actions.moveFatura(cardId, [id])
@@ -424,6 +430,17 @@ export function BlockTable({
                       </td>
                     )}
                     <td className="!px-2 text-muted">{shortDate(c.entry.date)}</td>
+                    <td>
+                      <StatusCell
+                        status={c.entry.status}
+                        color={color}
+                        pendingLabel={CARD_META.pending}
+                        doneLabel={CARD_META.done}
+                        onToggle={() =>
+                          actions.patchEntry(c.block.id, c.entry.id, { status: c.entry.status === "done" ? "pending" : "done" })
+                        }
+                      />
+                    </td>
                     <td colSpan={extras.length + 1} />
                   </tr>
                 ))}
@@ -442,11 +459,9 @@ export function BlockTable({
               )}
               <td />
               {isSavings && <td className="text-right">{targetTotal ? fmtNum(targetTotal) : ""}</td>}
-              {showStatus && (
-                <td className="whitespace-nowrap text-[14px] font-medium text-muted">
-                  {count > 0 ? `${doneCount} de ${count} ${DONE_PLURAL[block.kind]}` : ""}
-                </td>
-              )}
+              <td className="whitespace-nowrap text-[14px] font-medium text-muted">
+                {count > 0 ? `${doneCount} de ${count} ${card ? "na fatura" : DONE_PLURAL[block.kind]}` : ""}
+              </td>
               {showPayWith && (
                 <td className="whitespace-nowrap text-[14px] font-medium" style={{ color: CARD_META.color }}>
                   {onCardTotal ? `${fmtNum(onCardTotal)} no cartão` : ""}
@@ -540,7 +555,6 @@ function EntryRow({
   actions,
   navigate,
   saldo,
-  showStatus,
   cards,
   onMoveFatura,
 }: {
@@ -552,7 +566,6 @@ function EntryRow({
   actions: Actions;
   navigate: (index: number, col: string, dir: Nav) => void;
   saldo: number | null;
-  showStatus: boolean;
   /** cartões disponíveis para "Pagar com"; null = coluna escondida */
   cards: Block[] | null;
   onMoveFatura: (cardId: string, entryId: string) => void;
@@ -563,7 +576,7 @@ function EntryRow({
   // compra no cartão (na tabela dele ou paga com ele) que, pela data, é de outra fatura
   const faturaCard = block.card ? block : (cards?.find((c) => c.id === e.payWith) ?? null);
   const fatura = otherFatura(e, faturaCard, block.ym);
-  const overdue = block.kind === "expense" && showStatus && !onCard && e.status === "pending" && !!e.date && e.date < today;
+  const overdue = block.kind === "expense" && !block.card && !onCard && e.status === "pending" && !!e.date && e.date < today;
 
   return (
     <tr className="group hover:bg-[#f6faf7]">
@@ -633,27 +646,15 @@ function EntryRow({
           />
         </td>
       )}
-      {showStatus && (
-        <td>
-          {onCard ? (
-            <span
-              className="flex h-[37px] items-center gap-2 px-2 text-[14.5px] font-medium"
-              style={{ color: CARD_META.color }}
-              title="Fica paga quando a fatura do cartão for paga"
-            >
-              <CreditCard size={16} /> Na fatura
-            </span>
-          ) : (
-            <StatusCell
-              status={e.status}
-              color={meta.color}
-              pendingLabel={meta.pending}
-              doneLabel={meta.done}
-              onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
-            />
-          )}
-        </td>
-      )}
+      <td>
+        <StatusCell
+          status={e.status}
+          color={block.card || onCard ? CARD_META.color : meta.color}
+          pendingLabel={block.card || onCard ? CARD_META.pending : meta.pending}
+          doneLabel={block.card || onCard ? CARD_META.done : meta.done}
+          onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
+        />
+      </td>
       {cards && (
         <td>
           <PayWithCell label="Pagar com" value={e.payWith} cards={cards} onCommit={(v) => patch({ payWith: v })} />

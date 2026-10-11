@@ -10,7 +10,7 @@
  *
  * Usado no navegador (planilha e painel) e no servidor.
  */
-import { cardIds, cardInfo, cashTotals, onCard, type CardInfo } from "./summary";
+import { cardIds, cardInfo, cashTotals, counts, onCard, type CardInfo } from "./summary";
 import type { Block, Carry, Entry, EntryKind, Member } from "./types";
 
 export const ENTRY_KINDS: EntryKind[] = ["income", "expense", "savings"];
@@ -92,8 +92,8 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   for (const b of blocks) {
     if (b.kind === "total") continue;
     const t = cashTotals(b, cardSet);
-    // nas referências, um cartão vale a fatura inteira; receita e despesa só o que já foi recebido/pago
-    plainTotals.set(b.id, cards.get(b.id)?.net ?? (b.kind === "income" || b.kind === "expense" ? t.done : t.total));
+    // nas referências, um cartão vale a fatura (compras marcadas); as outras tabelas, só as linhas marcadas
+    plainTotals.set(b.id, cards.get(b.id)?.net ?? t.total);
     for (const s of [scope("all"), scope(ownerScope(b, members))]) {
       if (b.kind === "income") (s.income += t.total), (s.incomeDone += t.done);
       else if (b.kind === "expense") (s.expense += t.total), (s.expenseDone += t.done);
@@ -122,7 +122,8 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
       return 0;
     }
     visiting.add(id);
-    const v = b.entries.reduce((s, e) => s + rowValue(b, e), 0);
+    // só as linhas marcadas entram no total
+    const v = b.entries.reduce((s, e) => (counts(e) ? s + rowValue(b, e) : s), 0);
     visiting.delete(id);
     memo.set(id, v);
     return v;
@@ -136,7 +137,7 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
   function resolve(ref: string): number {
     const [head, a, b] = ref.split(":");
     if (head === "block" && a) return blockValue(a);
-    if (head === "carry") return carry.planned;
+    if (head === "carry") return carry.realized;
     if (head === "balance") return scopes.get(a ?? "all")?.balance ?? 0;
     if (head === "kind" && (ENTRY_KINDS as string[]).includes(a)) {
       const s = scopes.get(b ?? "all");
@@ -173,7 +174,7 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     // o cartão é crédito: não consome a fonte (o pagamento é linha de despesa)
     .filter((b) => (b.kind === "expense" || b.kind === "savings") && !cards.has(b.id))
     .map((b, order) => {
-      const spent = b.entries.reduce((s, e) => (onCard(e, cardSet) || e.status !== "done" ? s : s + e.amount), 0);
+      const spent = b.entries.reduce((s, e) => (onCard(e, cardSet) || !counts(e) ? s : s + e.amount), 0);
       return { b, order, source: sourceOf(b), spent };
     });
   const comesBefore = (x: (typeof spenders)[number], y: (typeof spenders)[number]) => {
@@ -185,7 +186,7 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     const prior = spenders.filter((o) => o !== s && comesBefore(o, s) && containers(o.source).includes(source));
     const start = cash(source) - prior.reduce((t, o) => t + o.spent, 0);
     let bal = start;
-    const after = b.entries.map((e) => (onCard(e, cardSet) || e.status !== "done" ? bal : (bal -= e.amount)));
+    const after = b.entries.map((e) => (onCard(e, cardSet) || !counts(e) ? bal : (bal -= e.amount)));
     running.set(b.id, { source, start, after, end: bal, sharedWith: prior.map((o) => o.b.name) });
   }
 

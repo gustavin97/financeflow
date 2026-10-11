@@ -1,5 +1,5 @@
 import { worstLevel, type FinAlert } from "@/lib/alerts";
-import type { MonthCalc, ScopeTotals } from "@/lib/calc";
+import type { MonthCalc } from "@/lib/calc";
 import { SHARED_COLOR } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct } from "@/lib/money";
 import type { MonthSummary } from "@/lib/summary";
@@ -49,22 +49,22 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
     >
       <Cell
         label="Receitas"
-        value={s.incomeDone}
+        value={s.income}
         color="#107c41"
-        lines={[`Previsto: ${fmtBRL(s.income)}`, `A receber: ${fmtBRL(s.income - s.incomeDone)}`]}
+        lines={["Só linhas marcadas", `A receber: ${fmtBRL(s.incomePending)}`]}
       />
       <Cell
         label="Despesas"
-        value={s.expenseDone}
+        value={s.expense}
         color="#c4361f"
-        lines={[`Previsto: ${fmtBRL(s.expense)}`, `A pagar: ${fmtBRL(s.expense - s.expenseDone)}`]}
+        lines={["Só linhas marcadas", `A pagar: ${fmtBRL(s.expensePending)}`]}
       />
       <Cell
         label="Economias"
         value={s.savings}
         color="#1d5fbf"
         lines={[
-          `Guardado: ${fmtBRL(s.savingsDone)}`,
+          `Previsto: ${fmtBRL(s.savingsPending)}`,
           s.income > 0 ? `${fmtPct(s.savingsRate, 1)} da renda` : "Sem receitas para comparar",
         ]}
       />
@@ -72,13 +72,13 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
         label="Saldo do mês"
         value={s.balance}
         color={tone(s.balance)}
-        lines={["Receitas − despesas − economias", `Realizado: ${fmtBRL(s.balanceRealized)}`]}
+        lines={["Receitas − despesas − economias", "Só linhas marcadas"]}
       />
       <Cell
         label="Saldo acumulado"
         value={s.accumulated}
         color={tone(s.accumulated)}
-        lines={[`Meses anteriores: ${fmtBRL(carry.planned)}`, `Realizado: ${fmtBRL(s.accumulatedRealized)}`]}
+        lines={[`Meses anteriores: ${fmtBRL(carry.planned)}`]}
       />
     </div>
   );
@@ -95,20 +95,13 @@ export function PeopleTable({ members, calc, alerts }: { members: Member[]; calc
     return { level: worstLevel(mine), top: mine[0]?.title ?? "" };
   };
   if (!members.length) return null;
-  // receitas só contam depois de recebidas, e despesas depois de pagas
-  const received = (s: ScopeTotals) => ({
-    ...s,
-    income: s.incomeDone,
-    expense: s.expenseDone,
-    balance: s.incomeDone - s.expenseDone - s.savings,
-  });
-  const shared = received(calc.scopes.get("shared")!);
-  const all = received(calc.scopes.get("all")!);
+  const shared = calc.scopes.get("shared")!;
+  const all = calc.scopes.get("all")!;
   const peopleIncome = members.reduce((s, m) => s + (calc.scopes.get(m.id)?.incomeDone ?? 0), 0);
   const sharedOut = shared.expense + shared.savings - shared.income;
 
   const rows = members.map((m) => {
-    const s = received(calc.scopes.get(m.id)!);
+    const s = calc.scopes.get(m.id)!;
     const ratio = peopleIncome > 0 ? s.income / peopleIncome : 1 / members.length;
     const part = Math.round(sharedOut * ratio);
     return { id: m.id, name: m.name, color: m.color, s, ratio, part, final: s.balance - part };

@@ -312,12 +312,15 @@ export function StatusCell({
   pendingLabel,
   doneLabel,
   color,
+  compact = false,
 }: {
   status: Status;
   onToggle: () => void;
   pendingLabel: string;
   doneLabel: string;
   color: string;
+  /** só a caixa, sem o texto */
+  compact?: boolean;
 }) {
   const done = status === "done";
   return (
@@ -325,7 +328,9 @@ export function StatusCell({
       type="button"
       onClick={onToggle}
       aria-pressed={done}
-      className="flex h-[37px] w-full items-center gap-2 px-2 text-left text-[14.5px] hover:bg-head"
+      aria-label={compact ? (done ? doneLabel : pendingLabel) : undefined}
+      title={compact ? (done ? `${doneLabel}: entra no total` : `${pendingLabel}: marque para entrar no total`) : undefined}
+      className={`flex h-[37px] w-full items-center gap-2 px-2 text-left text-[14.5px] hover:bg-head ${compact ? "justify-center" : ""}`}
     >
       <span
         className="flex h-[18px] w-[18px] shrink-0 items-center justify-center border"
@@ -336,9 +341,11 @@ export function StatusCell({
       >
         {done && <Check size={13} strokeWidth={3} className="text-white" />}
       </span>
-      <span className={done ? "font-medium" : "text-muted"} style={done ? { color } : undefined}>
-        {done ? doneLabel : pendingLabel}
-      </span>
+      {!compact && (
+        <span className={done ? "font-medium" : "text-muted"} style={done ? { color } : undefined}>
+          {done ? doneLabel : pendingLabel}
+        </span>
+      )}
     </button>
   );
 }

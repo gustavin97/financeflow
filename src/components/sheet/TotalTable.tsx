@@ -9,14 +9,18 @@ import type { Block, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog, RefSelect } from "./blockDialogs";
-import { MoneyCell, TextCell } from "./cells";
+import { MoneyCell, StatusCell, TextCell } from "./cells";
 import type { useMonth } from "./useMonth";
 
-type Actions = Pick<ReturnType<typeof useMonth>, "patchBlock" | "removeBlock" | "addEntry" | "patchEntry" | "removeEntry">;
+type Actions = Pick<
+  ReturnType<typeof useMonth>,
+  "patchBlock" | "removeBlock" | "completeBlock" | "addEntry" | "patchEntry" | "removeEntry"
+>;
 
 /**
  * Tabela de total: cada linha soma (+) ou subtrai (−) o valor de outra tabela,
  * de uma pessoa, do saldo... ou um valor digitado. Tudo se atualiza sozinho.
+ * Só as linhas marcadas entram no total.
  */
 export function TotalTable({
   block,
@@ -77,6 +81,12 @@ export function TotalTable({
         </span>
         <Dropdown label={`Opções de ${block.name}`} trigger={<MoreHorizontal size={18} />}>
           <MenuItem onClick={() => setSettings(true)}>Dono da tabela</MenuItem>
+          {block.entries.length > 0 && (
+            <>
+              <MenuItem onClick={() => actions.completeBlock(block.id, "done")}>{meta.doneAll}</MenuItem>
+              <MenuItem onClick={() => actions.completeBlock(block.id, "pending")}>Desmarcar todas</MenuItem>
+            </>
+          )}
           <div className="my-1 border-t border-grid" />
           <MenuItem
             danger
@@ -90,9 +100,10 @@ export function TotalTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="sheet" style={{ minWidth: 42 + 66 + 180 + 260 + 152 + 40 }}>
+        <table className="sheet" style={{ minWidth: 42 + 44 + 66 + 180 + 260 + 152 + 40 }}>
           <colgroup>
             <col style={{ width: 42 }} />
+            <col style={{ width: 44 }} />
             <col style={{ width: 66 }} />
             <col />
             <col style={{ width: 260 }} />
@@ -102,6 +113,7 @@ export function TotalTable({
           <thead>
             <tr>
               <th className="gutter" />
+              <th title="Só as linhas marcadas entram no total" aria-label="Conta no total" />
               <th title="Soma ou subtrai">±</th>
               <th>Descrição</th>
               <th>Vem de</th>
@@ -124,6 +136,16 @@ export function TotalTable({
                     >
                       <X size={15} />
                     </button>
+                  </td>
+                  <td className="!p-0">
+                    <StatusCell
+                      compact
+                      status={e.status}
+                      color={meta.color}
+                      pendingLabel={meta.pending}
+                      doneLabel={meta.done}
+                      onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
+                    />
                   </td>
                   <td className="!p-0">
                     <button
@@ -165,8 +187,8 @@ export function TotalTable({
                   <td>
                     {e.ref ? (
                       <span
-                        className="block px-2 text-right leading-[37px]"
-                        style={{ color: value < 0 ? "#c4361f" : undefined }}
+                        className={`block px-2 text-right leading-[37px] ${e.status === "done" ? "" : "text-faint"}`}
+                        style={{ color: e.status === "done" && value < 0 ? "#c4361f" : undefined }}
                         title="Calculado automaticamente"
                       >
                         {fmtNum(value)}
@@ -182,7 +204,7 @@ export function TotalTable({
             {block.entries.length === 0 && (
               <tr>
                 <td className="gutter" />
-                <td colSpan={4} className="!px-2 text-[15px] text-faint">
+                <td colSpan={5} className="!px-2 text-[15px] text-faint">
                   Adicione linhas apontando para outras tabelas, pessoas ou saldos.
                 </td>
                 <td />
@@ -190,7 +212,7 @@ export function TotalTable({
             )}
             <tr>
               <td className="gutter" />
-              <td colSpan={4} className="!p-0">
+              <td colSpan={5} className="!p-0">
                 <button
                   onClick={() => actions.addEntry(block.id)}
                   className="flex h-[37px] w-full items-center gap-1.5 px-2 text-[15px] font-medium text-brand hover:bg-brand-soft"
@@ -204,6 +226,7 @@ export function TotalTable({
           <tfoot>
             <tr>
               <td className="gutter" />
+              <td />
               <td />
               <td colSpan={2}>Total</td>
               <td className="text-right" style={{ color: total < 0 ? "#c4361f" : undefined }}>

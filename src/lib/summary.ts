@@ -1,22 +1,22 @@
 import type { Block, Carry, Entry } from "./types";
 
+/** Só linhas marcadas (recebido, pago, guardado, na fatura...) entram nas contas. */
+export const counts = (e: Pick<Entry, "status">) => e.status === "done";
+
 export function blockTotals(b: Block) {
-  let total = 0;
   let done = 0;
+  let pending = 0;
   let doneCount = 0;
   let count = 0;
   for (const e of b.entries) {
-    total += e.amount;
     // linhas em branco (criadas com Enter para digitar rápido) não entram na contagem
     if (e.description.trim() !== "" || e.amount !== 0) count++;
-    if (e.status === "done") {
+    if (counts(e)) {
       done += e.amount;
       doneCount++;
-    }
+    } else pending += e.amount;
   }
-  // receita só entra no total depois de recebida, e despesa depois de paga
-  if (b.kind === "income" || b.kind === "expense") total = done;
-  return { total, done, pending: total - done, count, doneCount };
+  return { total: done, done, pending, count, doneCount };
 }
 
 /* ------------------------------------------------------------------ */
@@ -55,13 +55,14 @@ export interface CardInfo {
 }
 
 export function cardInfo(card: Block, blocks: Block[]): CardInfo {
-  const own = card.entries.reduce((s, e) => s + e.amount, 0);
+  // só compras marcadas entram na fatura
+  const own = card.entries.reduce((s, e) => (counts(e) ? s + e.amount : s), 0);
   const charges: CardInfo["charges"] = [];
   for (const b of blocks) {
     if (b.id === card.id || b.kind !== "expense" || b.card) continue;
     for (const e of b.entries) if (e.payWith === card.id) charges.push({ block: b, entry: e });
   }
-  const chargesTotal = charges.reduce((s, c) => s + c.entry.amount, 0);
+  const chargesTotal = charges.reduce((s, c) => (counts(c.entry) ? s + c.entry.amount : s), 0);
   const bill = own + chargesTotal;
   const limit = card.budgetType === "amount" && card.budgetValue > 0 ? Math.round(card.budgetValue) : null;
   const closed = card.cardClosed;
@@ -75,21 +76,22 @@ export function cardInfo(card: Block, blocks: Block[]): CardInfo {
 }
 
 /**
- * Valores que entram nas somas do mês. O cartão é crédito: as compras nele
+ * Valores que entram nas somas do mês: só as linhas marcadas (`total`);
+ * `pending` é o que ainda falta marcar. O cartão é crédito: as compras nele
  * (na tabela do cartão ou pagas com ele) não entram nas somas, e o pagamento
  * da fatura é lançado como linha numa tabela de despesas. O valor pago
  * registrado no cartão só abate o gasto e libera o limite.
  */
 export function cashTotals(b: Block, cards: Set<string>) {
-  if (b.card && cards.has(b.id)) return { total: 0, done: 0 };
-  let total = 0;
+  if (b.card && cards.has(b.id)) return { total: 0, done: 0, pending: 0 };
   let done = 0;
+  let pending = 0;
   for (const e of b.entries) {
     if (onCard(e, cards)) continue;
-    total += e.amount;
-    if (e.status === "done") done += e.amount;
+    if (counts(e)) done += e.amount;
+    else pending += e.amount;
   }
-  return { total, done };
+  return { total: done, done, pending };
 }
 
 export interface MonthSummary {
@@ -99,9 +101,12 @@ export interface MonthSummary {
   expenseDone: number;
   savings: number;
   savingsDone: number;
-  /** previsto: receitas - despesas - cofrinho */
+  /** linhas ainda não marcadas: não entram nas contas */
+  incomePending: number;
+  expensePending: number;
+  savingsPending: number;
+  /** receitas − despesas − cofrinho (só linhas marcadas) */
   balance: number;
-  /** realizado: recebido - pago - guardado */
   balanceRealized: number;
   accumulated: number;
   accumulatedRealized: number;
@@ -116,6 +121,9 @@ export function computeSummary(blocks: Block[], carry: Carry): MonthSummary {
     expenseDone: 0,
     savings: 0,
     savingsDone: 0,
+    incomePending: 0,
+    expensePending: 0,
+    savingsPending: 0,
   };
   const cards = cardIds(blocks);
   for (const b of blocks) {
@@ -125,12 +133,15 @@ export function computeSummary(blocks: Block[], carry: Carry): MonthSummary {
     if (b.kind === "income") {
       s.income += t.total;
       s.incomeDone += t.done;
+      s.incomePending += t.pending;
     } else if (b.kind === "expense") {
       s.expense += t.total;
       s.expenseDone += t.done;
+      s.expensePending += t.pending;
     } else {
       s.savings += t.total;
       s.savingsDone += t.done;
+      s.savingsPending += t.pending;
     }
   }
   const balance = s.income - s.expense - s.savings;

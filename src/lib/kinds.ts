@@ -48,9 +48,9 @@ export const KIND_META: Record<
     plural: "Totais",
     color: "#4a3aa7",
     dateLabel: "",
-    pending: "",
-    done: "",
-    doneAll: "",
+    pending: "Não conta",
+    done: "Conta",
+    doneAll: "Marcar todas",
     hint: "Soma e subtrai outras tabelas: renda do casal, despesas somadas, quanto sobra...",
   },
 };
@@ -60,6 +60,9 @@ export const CARD_META = {
   label: "Cartão de crédito",
   short: "Cartão",
   color: "#8a4fa3",
+  pending: "A lançar",
+  done: "Na fatura",
+  doneAll: "Marcar tudo na fatura",
   hint: "Limite e fatura. Despesas de outras tabelas podem ser pagas com ele; pagar a fatura sai das receitas.",
 };
 
