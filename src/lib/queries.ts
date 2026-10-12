@@ -1267,11 +1267,10 @@ export async function goalStats(userId: string): Promise<GoalStat[]> {
   const goals = await db.prepare("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at").all(userId);
   const hist = await db
     .prepare(
-      `SELECT e.goal_id AS goal_id, b.ym AS ym,
-              SUM(e.amount) AS total,
-              SUM(CASE WHEN e.status = 'done' THEN e.amount ELSE 0 END) AS done
+      // só aportes marcados como guardados
+      `SELECT e.goal_id AS goal_id, b.ym AS ym, SUM(e.amount) AS done
          FROM entries e JOIN blocks b ON b.id = e.block_id
-        WHERE e.user_id = ? AND e.goal_id IS NOT NULL
+        WHERE e.user_id = ? AND e.goal_id IS NOT NULL AND e.status = 'done'
         GROUP BY e.goal_id, b.ym ORDER BY b.ym`,
     )
     .all(userId);
@@ -1279,12 +1278,11 @@ export async function goalStats(userId: string): Promise<GoalStat[]> {
   return goals.map((g) => {
     const history = hist
       .filter((h) => h.goal_id === g.id)
-      .map((h) => ({ ym: h.ym as string, total: h.total as number, done: h.done as number }));
+      .map((h) => ({ ym: h.ym as string, done: h.done as number }));
     const saved = history.reduce((s, h) => s + h.done, 0);
-    const planned = history.reduce((s, h) => s + (h.total - h.done), 0);
     const last3 = history.slice(-3);
     const monthlyAvg = last3.length
-      ? Math.round(last3.reduce((s, h) => s + h.total, 0) / last3.length)
+      ? Math.round(last3.reduce((s, h) => s + h.done, 0) / last3.length)
       : 0;
     return {
       id: g.id,
@@ -1293,7 +1291,6 @@ export async function goalStats(userId: string): Promise<GoalStat[]> {
       targetAmount: g.target_amount,
       targetMonth: g.target_month,
       saved,
-      planned,
       monthlyAvg,
       history,
     };

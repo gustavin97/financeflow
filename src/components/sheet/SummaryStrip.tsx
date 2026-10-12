@@ -51,20 +51,20 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
         label="Receitas"
         value={s.income}
         color="#107c41"
-        lines={["Só linhas marcadas", `A receber: ${fmtBRL(s.incomePending)}`]}
+        lines={["Só o que foi marcado como recebido"]}
       />
       <Cell
         label="Despesas"
         value={s.expense}
         color="#c4361f"
-        lines={["Só linhas marcadas", `A pagar: ${fmtBRL(s.expensePending)}`]}
+        lines={["Só o que foi marcado como pago"]}
       />
       <Cell
         label="Economias"
         value={s.savings}
         color="#1d5fbf"
         lines={[
-          `Previsto: ${fmtBRL(s.savingsPending)}`,
+          "Só o que foi marcado como guardado",
           s.income > 0 ? `${fmtPct(s.savingsRate, 1)} da renda` : "Sem receitas para comparar",
         ]}
       />
@@ -72,7 +72,7 @@ export function SummaryStrip({ s, carry }: { s: MonthSummary; carry: Carry }) {
         label="Saldo do mês"
         value={s.balance}
         color={tone(s.balance)}
-        lines={["Receitas − despesas − economias", "Só linhas marcadas"]}
+        lines={["Recebido − pago − guardado"]}
       />
       <Cell
         label="Saldo acumulado"

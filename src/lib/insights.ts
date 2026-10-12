@@ -1,5 +1,6 @@
 /** Contas do painel: agrupamento de gastos, comparação e projeção. */
 import { buildCalc, ownerScope, type ScopeTotals } from "./calc";
+import { counts } from "./summary";
 import type { Block, Carry, Member } from "./types";
 
 /** "block" | "person" | "desc" | "col:<nome da coluna em minúsculas>" */
@@ -29,7 +30,10 @@ export function groupOptions(blockSets: Block[][], members: Member[]): GroupOpti
   return opts;
 }
 
-/** Soma das despesas por grupo. `who` filtra por dono ("all", "shared" ou id). */
+/**
+ * Soma das despesas por grupo, só das linhas marcadas como pagas. `who` filtra
+ * por dono ("all", "shared" ou id); linhas "conjunto" de uma pessoa são do conjunto.
+ */
 export function spendByGroup(blocks: Block[], members: Member[], groupBy: GroupBy, who: string) {
   const out = new Map<string, { label: string; value: number }>();
   const add = (label: string, v: number) => {
@@ -40,21 +44,16 @@ export function spendByGroup(blocks: Block[], members: Member[], groupBy: GroupB
   };
   for (const b of blocks) {
     if (b.kind !== "expense") continue;
-    const owner = ownerScope(b, members);
-    if (who !== "all" && owner !== who) continue;
-    if (groupBy === "block") {
-      add(b.name, b.entries.reduce((s, e) => s + e.amount, 0));
-      continue;
-    }
-    if (groupBy === "person") {
-      const name = owner === "shared" ? "Conjunto" : (members.find((m) => m.id === owner)?.name ?? "Conjunto");
-      add(name, b.entries.reduce((s, e) => s + e.amount, 0));
-      continue;
-    }
+    const tableOwner = ownerScope(b, members);
     const col = groupBy.startsWith("col:") ? b.columns.find((c) => norm(c.name) === groupBy.slice(4)) : null;
     for (const e of b.entries) {
-      if (!e.amount) continue;
-      if (groupBy === "desc") add(e.description || "(sem descrição)", e.amount);
+      if (!e.amount || !counts(e)) continue;
+      const owner = e.shared ? "shared" : tableOwner;
+      if (who !== "all" && owner !== who) continue;
+      if (groupBy === "block") add(b.name, e.amount);
+      else if (groupBy === "person")
+        add(owner === "shared" ? "Conjunto" : (members.find((m) => m.id === owner)?.name ?? "Conjunto"), e.amount);
+      else if (groupBy === "desc") add(e.description || "(sem descrição)", e.amount);
       else {
         const v = col ? e.extra[col.id] : null;
         add(typeof v === "string" && v.trim() ? v : `Sem ${groupBy.slice(4)}`, e.amount);

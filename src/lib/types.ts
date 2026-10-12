@@ -122,10 +122,10 @@ export interface GoalStat {
   targetAmount: number;
   /** YYYY-MM ou null */
   targetMonth: string | null;
+  /** só aportes marcados como guardados */
   saved: number;
-  planned: number;
   monthlyAvg: number;
-  history: { ym: string; total: number; done: number }[];
+  history: { ym: string; done: number }[];
 }
 
 export interface AnnualPayload {

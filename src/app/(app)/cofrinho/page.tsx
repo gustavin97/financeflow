@@ -48,10 +48,9 @@ export default function GoalsPage() {
   const totals = (goals ?? []).reduce(
     (t, g) => ({
       saved: t.saved + g.saved,
-      planned: t.planned + g.planned,
       target: t.target + g.targetAmount,
     }),
-    { saved: 0, planned: 0, target: 0 },
+    { saved: 0, target: 0 },
   );
 
   async function remove(g: GoalStat) {
@@ -104,10 +103,9 @@ export default function GoalsPage() {
 
       {goals && goals.length > 0 && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 kpis gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 kpis gap-3 lg:grid-cols-3">
             {[
               { l: "Guardado até agora", v: fmtBRL(totals.saved), c: "#1d5fbf" },
-              { l: "Previsto nas planilhas", v: fmtBRL(totals.planned), c: "#1c2024" },
               { l: "Soma das metas", v: fmtBRL(totals.target), c: "#1c2024" },
               {
                 l: "Progresso geral",
@@ -125,11 +123,10 @@ export default function GoalsPage() {
           </div>
 
           <div className="overflow-x-auto panel">
-            <table className="sheet" style={{ minWidth: 980 }}>
+            <table className="sheet" style={{ minWidth: 860 }}>
               <colgroup>
                 <col style={{ width: 36 }} />
                 <col style={{ width: 190 }} />
-                <col style={{ width: 120 }} />
                 <col style={{ width: 120 }} />
                 <col style={{ width: 120 }} />
                 <col style={{ width: 120 }} />
@@ -144,7 +141,6 @@ export default function GoalsPage() {
                   <th>Meta</th>
                   <th className="!text-right">Valor da meta</th>
                   <th className="!text-right">Guardado</th>
-                  <th className="!text-right">Previsto</th>
                   <th className="!text-right">Falta</th>
                   <th>Progresso</th>
                   <th className="!text-right">Ritmo por mês</th>
@@ -178,7 +174,6 @@ export default function GoalsPage() {
                         <td className="!px-2 text-right font-semibold" style={{ color: "#1d5fbf" }}>
                           {fmtNum(g.saved)}
                         </td>
-                        <td className="!px-2 text-right text-muted">{fmtNum(g.planned)}</td>
                         <td className="!px-2 text-right">{fmtNum(p.remaining)}</td>
                         <td className="!px-2">
                           <div className="flex items-center gap-2">
@@ -212,7 +207,7 @@ export default function GoalsPage() {
                       {isOpen && (
                         <tr>
                           <td className="gutter" />
-                          <td colSpan={8} className="!bg-[#fafbfb] !p-3">
+                          <td colSpan={7} className="!bg-[#fafbfb] !p-3">
                             {g.history.length === 0 ? (
                               <p className="text-[15px] text-muted">
                                 Nenhum aporte ainda. Na planilha do mês, escolha esta meta na coluna “Cofrinho” de uma
@@ -223,8 +218,7 @@ export default function GoalsPage() {
                                 <thead>
                                   <tr className="text-left text-[14px] text-muted">
                                     <th className="py-1 font-medium">Mês</th>
-                                    <th className="py-1 text-right font-medium">Aporte</th>
-                                    <th className="py-1 text-right font-medium">Já guardado</th>
+                                    <th className="py-1 text-right font-medium">Guardado</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -235,7 +229,6 @@ export default function GoalsPage() {
                                           {cap(ymLabel(h.ym))}
                                         </Link>
                                       </td>
-                                      <td className="py-1 text-right">{fmtNum(h.total)}</td>
                                       <td className="py-1 text-right">{fmtNum(h.done)}</td>
                                     </tr>
                                   ))}
@@ -253,8 +246,8 @@ export default function GoalsPage() {
             </table>
           </div>
           <p className="text-[14.5px] text-muted">
-            O ritmo por mês é a média dos últimos três meses com aportes. “Guardado” conta só o que foi
-            marcado como guardado; “Previsto” ainda está pendente.
+            O ritmo por mês é a média dos últimos três meses com aportes. Tudo aqui conta só o que foi
+            marcado como guardado nas planilhas.
           </p>
         </div>
       )}

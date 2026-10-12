@@ -101,10 +101,6 @@ export interface MonthSummary {
   expenseDone: number;
   savings: number;
   savingsDone: number;
-  /** linhas ainda não marcadas: não entram nas contas */
-  incomePending: number;
-  expensePending: number;
-  savingsPending: number;
   /** receitas − despesas − cofrinho (só linhas marcadas) */
   balance: number;
   balanceRealized: number;
@@ -121,9 +117,6 @@ export function computeSummary(blocks: Block[], carry: Carry): MonthSummary {
     expenseDone: 0,
     savings: 0,
     savingsDone: 0,
-    incomePending: 0,
-    expensePending: 0,
-    savingsPending: 0,
   };
   const cards = cardIds(blocks);
   for (const b of blocks) {
@@ -133,15 +126,12 @@ export function computeSummary(blocks: Block[], carry: Carry): MonthSummary {
     if (b.kind === "income") {
       s.income += t.total;
       s.incomeDone += t.done;
-      s.incomePending += t.pending;
     } else if (b.kind === "expense") {
       s.expense += t.total;
       s.expenseDone += t.done;
-      s.expensePending += t.pending;
     } else {
       s.savings += t.total;
       s.savingsDone += t.done;
-      s.savingsPending += t.pending;
     }
   }
   const balance = s.income - s.expense - s.savings;
