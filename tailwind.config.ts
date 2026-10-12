@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Finance Flow - tokens visuais.
+ * Controle Financeiro - tokens visuais.
  * Estética "planilha": fundo cinza-claro de bancada, folhas brancas com
  * cantos suaves e linhas de grade finas e discretas dentro das tabelas.
  */

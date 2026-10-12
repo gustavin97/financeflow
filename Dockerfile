@@ -1,4 +1,4 @@
-# Finance Flow - imagem de produção
+# Controle Financeiro - imagem de produção
 # Banco no Supabase: passe DATABASE_URL ao rodar o container.
 
 FROM node:24-bookworm-slim AS deps

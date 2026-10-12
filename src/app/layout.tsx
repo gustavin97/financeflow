@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Finance Flow", template: "%s · Finance Flow" },
+  title: { default: "Controle Financeiro", template: "%s · Controle Financeiro" },
   description:
     "Controle financeiro do casal em tabelas conectadas: salários, contas da casa, cartão, economias, painel com gráficos e avisos antes do vermelho.",
 };

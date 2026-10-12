@@ -1,8 +1,8 @@
 {
-  "name": "finance-flow",
+  "name": "controle-financeiro",
   "version": "1.0.0",
   "private": true,
-  "description": "Finance Flow - controle financeiro pessoal em tabelas conectadas",
+  "description": "Controle Financeiro - finanças pessoais em tabelas conectadas",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

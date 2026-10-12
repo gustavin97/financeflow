@@ -1,4 +1,4 @@
-# Finance Flow
+# Controle Financeiro
 
 Controle financeiro **pessoal** em tabelas conectadas, com visual de planilha (Excel): bordas retas, grade fina, números alinhados e edição direto na célula.
 

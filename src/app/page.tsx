@@ -164,7 +164,7 @@ export default async function Home() {
 
       <footer className="border-t border-grid">
         <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2 px-5 py-6 text-[15px] text-muted">
-          <span>Finance Flow, controle financeiro para casais e famílias.</span>
+          <span>Controle Financeiro, para casais e famílias.</span>
           {!user && (
             <Link href="/login" className="hover:text-ink hover:underline">
               Entrar

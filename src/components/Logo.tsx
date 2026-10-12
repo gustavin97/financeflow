@@ -26,7 +26,7 @@ export function Logo({ light = false, large = false }: { light?: boolean; large?
       <span
         className={`${large ? "text-[20px]" : "text-[16px]"} whitespace-nowrap font-semibold tracking-tight ${light ? "text-white" : "text-ink"}`}
       >
-        Finance Flow
+        Controle Financeiro
       </span>
     </span>
   );

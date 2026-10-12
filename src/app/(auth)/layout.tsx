@@ -71,7 +71,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
               ))}
             </ul>
           </div>
-          <p className="text-[14px] text-white/50">Seus dados ficam guardados só no servidor onde o Finance Flow roda.</p>
+          <p className="text-[14px] text-white/50">Seus dados ficam guardados só no servidor onde o Controle Financeiro roda.</p>
         </div>
       </aside>
 

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Finance Flow — schema completo para o Supabase (PostgreSQL)
+-- Controle Financeiro — schema completo para o Supabase (PostgreSQL)
 -- Cole tudo no SQL Editor e clique em "Run". Pode rodar de novo sem
 -- problema: tudo usa IF NOT EXISTS.
 --

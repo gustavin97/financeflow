@@ -28,7 +28,7 @@ export function TopNav({ user }: { user: SessionUser }) {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur-md">
       <div className="flex h-16 w-full items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/planilha" className="shrink-0" aria-label="Finance Flow">
+        <Link href="/planilha" className="shrink-0" aria-label="Controle Financeiro">
           <Logo large />
         </Link>
         <nav className="ml-2 flex h-full min-w-0 flex-1 items-stretch gap-1 overflow-x-auto">

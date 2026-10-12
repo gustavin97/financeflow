@@ -6,7 +6,7 @@ export const GET = route(async ({ user }) => {
   return new Response(JSON.stringify(data, null, 2), {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="finance-flow-dados.json"',
+      "Content-Disposition": 'attachment; filename="controle-financeiro-dados.json"',
     },
   });
 });
