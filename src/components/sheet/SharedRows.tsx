@@ -7,7 +7,7 @@ import { fmtNum } from "@/lib/money";
 import { counts } from "@/lib/summary";
 import type { Block, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
-import { SharedCell, StatusCell } from "./cells";
+import { FixedCell, SharedCell, StatusCell } from "./cells";
 import type { useMonth } from "./useMonth";
 
 type Actions = Pick<ReturnType<typeof useMonth>, "patchEntry">;
@@ -16,8 +16,8 @@ const shortDate = (d: string | null) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}
 
 /**
  * Linhas do conjunto lançadas nas tabelas de cada pessoa. Aparecem no filtro
- * "Conjunto" mostrando de quem é a linha; marcar ou voltar para individual
- * aqui muda a linha na tabela de origem.
+ * "Conjunto" mostrando de quem é a linha; marcar, fixar ou voltar para
+ * individual aqui muda a linha na tabela de origem.
  */
 export function SharedRows({ blocks, members, actions }: { blocks: Block[]; members: Member[]; actions: Actions }) {
   const rows = blocks.flatMap((b) => {
@@ -46,7 +46,7 @@ export function SharedRows({ blocks, members, actions }: { blocks: Block[]; memb
         </span>
       </div>
       <div className="overflow-x-auto">
-        <table className="sheet" style={{ minWidth: 160 + 180 + 220 + 128 + 90 + 140 + 136 }}>
+        <table className="sheet" style={{ minWidth: 160 + 180 + 220 + 128 + 90 + 140 + 88 + 136 }}>
           <colgroup>
             <col style={{ width: 160 }} />
             <col style={{ width: 180 }} />
@@ -54,6 +54,7 @@ export function SharedRows({ blocks, members, actions }: { blocks: Block[]; memb
             <col style={{ width: 128 }} />
             <col style={{ width: 90 }} />
             <col style={{ width: 140 }} />
+            <col style={{ width: 88 }} />
             <col style={{ width: 136 }} />
           </colgroup>
           <thead>
@@ -64,6 +65,7 @@ export function SharedRows({ blocks, members, actions }: { blocks: Block[]; memb
               <th className="!text-right">Valor (R$)</th>
               <th>Data</th>
               <th title="Só as linhas marcadas entram nas contas">Status</th>
+              <th title="Linhas fixas são copiadas para o próximo mês; as outras não">Fixa</th>
               <th />
             </tr>
           </thead>
@@ -95,6 +97,9 @@ export function SharedRows({ blocks, members, actions }: { blocks: Block[]; memb
                       doneLabel={card ? CARD_META.done : meta.done}
                       onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
                     />
+                  </td>
+                  <td>
+                    <FixedCell fixed={e.fixed} onToggle={() => patch({ fixed: !e.fixed })} />
                   </td>
                   <td>
                     <SharedCell shared owner={owner} onToggle={() => patch({ shared: false })} />
