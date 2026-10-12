@@ -39,6 +39,8 @@ export interface Entry {
   ref: string | null;
   /** tabelas de total: 1 soma, -1 subtrai */
   sign: 1 | -1;
+  /** linha de uma tabela de pessoa que é do conjunto: entra nas contas do conjunto */
+  shared: boolean;
   /** despesas: id do cartão de crédito que paga a linha. null = sai do saldo */
   payWith: string | null;
   /** parcela de uma compra parcelada (ex.: 3 de 12). id null = parcelamento já excluído */

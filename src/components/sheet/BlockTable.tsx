@@ -12,7 +12,7 @@ import type { Block, Entry, ExtraColumn, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog } from "./blockDialogs";
-import { DateCell, MoneyCell, PayWithCell, StatusCell, TextCell, type Nav } from "./cells";
+import { DateCell, MoneyCell, PayWithCell, SharedCell, StatusCell, TextCell, type Nav } from "./cells";
 import { BudgetDialog, ColumnsDialog, InstallmentDialog } from "./dialogs";
 import type { useMonth } from "./useMonth";
 
@@ -111,7 +111,10 @@ export function BlockTable({
   // cartões em que as linhas desta despesa podem ser lançadas
   const cards = card || block.kind !== "expense" ? [] : blocks.filter((b) => calc.cards.has(b.id));
   const showPayWith = cards.length > 0;
+  // tabela de uma pessoa: cada linha pode ser só dela ou do conjunto
+  const showShared = !!owner && !card;
   const showSaldo = card ? card.limit !== null : !!running;
+  const sharedCount = showShared ? block.entries.filter((e) => e.shared).length : 0;
   const onCardTotal = showPayWith
     ? block.entries.reduce((s, e) => s + (e.payWith && calc.cards.has(e.payWith) ? e.amount : 0), 0)
     : 0;
@@ -168,6 +171,7 @@ export function BlockTable({
     (isSavings ? 128 : 0) +
     128 +
     (showPayWith ? 150 : 0) +
+    (showShared ? 136 : 0) +
     extras.length * 156 +
     40;
 
@@ -175,7 +179,7 @@ export function BlockTable({
   const base = running ? calc.resolve(running.source) : income;
   const limit = budgetLimit(block, base);
   const cols =
-    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + 1 + (showPayWith ? 1 : 0) + extras.length;
+    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + 1 + (showPayWith ? 1 : 0) + (showShared ? 1 : 0) + extras.length;
 
   return (
     <section className="panel-open" aria-label={`Tabela ${block.name}`}>
@@ -290,6 +294,7 @@ export function BlockTable({
             {isSavings && <col style={{ width: 128 }} />}
             <col style={{ width: 128 }} />
             {showPayWith && <col style={{ width: 150 }} />}
+            {showShared && <col style={{ width: 136 }} />}
             {extras.map((c) => (
               <col key={c.id} style={{ width: 156 }} />
             ))}
@@ -319,6 +324,9 @@ export function BlockTable({
               {isSavings && <th className="!text-right">Meta (R$)</th>}
               <th title="Só as linhas marcadas entram no total">Status</th>
               {showPayWith && <th title="Saldo: sai do dinheiro da tabela. Cartão: entra na fatura e desconta o limite">Pagar com</th>}
+              {showShared && (
+                <th title="Individual: só da pessoa. Conjunto: entra nas contas do casal e aparece em “Conjunto”">De quem</th>
+              )}
               {extras.map((c) => (
                 <th key={c.id} title={c.name} className={c.type === "currency" || c.type === "number" ? "!text-right" : ""}>
                   {c.name}
@@ -349,6 +357,7 @@ export function BlockTable({
                 navigate={navigate}
                 saldo={showSaldo ? (saldo[i] ?? 0) : null}
                 cards={showPayWith ? cards : null}
+                owner={showShared ? owner : null}
                 onMoveFatura={(cardId, id) =>
                   cardId === block.id ? moveToFatura([id]) : actions.moveFatura(cardId, [id])
                 }
@@ -467,6 +476,11 @@ export function BlockTable({
                   {onCardTotal ? `${fmtNum(onCardTotal)} no cartão` : ""}
                 </td>
               )}
+              {showShared && (
+                <td className="whitespace-nowrap text-[14px] font-medium text-muted">
+                  {sharedCount ? `${sharedCount} do conjunto` : ""}
+                </td>
+              )}
               {extras.map((c) => (
                 <td key={c.id} className="text-right">
                   <ExtraSum col={c} block={block} />
@@ -556,6 +570,7 @@ function EntryRow({
   navigate,
   saldo,
   cards,
+  owner,
   onMoveFatura,
 }: {
   entry: Entry;
@@ -568,6 +583,8 @@ function EntryRow({
   saldo: number | null;
   /** cartões disponíveis para "Pagar com"; null = coluna escondida */
   cards: Block[] | null;
+  /** dono da tabela, quando a linha pode ser individual ou do conjunto */
+  owner: Member | null;
   onMoveFatura: (cardId: string, entryId: string) => void;
 }) {
   const meta = KIND_META[block.kind];
@@ -658,6 +675,11 @@ function EntryRow({
       {cards && (
         <td>
           <PayWithCell label="Pagar com" value={e.payWith} cards={cards} onCommit={(v) => patch({ payWith: v })} />
+        </td>
+      )}
+      {owner && (
+        <td>
+          <SharedCell shared={e.shared} owner={owner} onToggle={() => patch({ shared: !e.shared })} />
         </td>
       )}
       {block.columns.map((c) => (

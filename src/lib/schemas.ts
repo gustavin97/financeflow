@@ -115,6 +115,7 @@ export const entryCreateSchema = z.object({
   ref: ref.optional(),
   sign: sign.optional(),
   payWith: z.string().min(1).max(64).nullable().optional(),
+  shared: z.boolean().optional(),
 });
 
 export const entryPatchSchema = z.object({
@@ -127,6 +128,7 @@ export const entryPatchSchema = z.object({
   ref: ref.optional(),
   sign: sign.optional(),
   payWith: z.string().min(1).max(64).nullable().optional(),
+  shared: z.boolean().optional(),
   extra: z.record(z.string().max(40), z.union([z.string().max(200), z.number(), z.null()])).optional(),
 });
 

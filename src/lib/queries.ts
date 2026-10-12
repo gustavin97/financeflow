@@ -85,6 +85,7 @@ function mapEntry(r: Row): Entry {
     position: r.position,
     ref: r.ref ?? null,
     sign: r.sign === -1 ? -1 : 1,
+    shared: r.shared === 1,
     payWith: r.pay_with ?? null,
     installment: r.inst_no ? { id: r.inst_id ?? null, no: r.inst_no, count: r.inst_count } : null,
   };
@@ -292,8 +293,8 @@ export async function initMonth(userId: string, ym: string, mode: StartMode) {
         .prepare("SELECT * FROM blocks WHERE user_id = ? AND ym = ? ORDER BY position, created_at")
         .all(userId, prev.ym);
       const insertEntry = db.prepare(
-        `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, target, extra, position, ref, sign, pay_with)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, target, extra, position, ref, sign, pay_with, shared)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       );
       // compras de cartão com fechamento: a fatura de outubro tem compras de setembro, então
       // a data anda o mesmo número de meses em vez de cair dentro do mês novo
@@ -330,7 +331,8 @@ export async function initMonth(userId: string, ym: string, mode: StartMode) {
               e.description,
               e.amount,
               newDate(e.date, cycleCards.has(br.id) || (!!e.payWith && cycleCards.has(e.payWith))),
-              "pending",
+              // nas tabelas de total, a marcação faz parte da fórmula e é copiada
+              nb.kind === "total" ? e.status : "pending",
               e.goalId,
               e.target,
               JSON.stringify(extra),
@@ -338,6 +340,7 @@ export async function initMonth(userId: string, ym: string, mode: StartMode) {
               remapRef(e.ref, ids),
               e.sign,
               (e.payWith && ids.get(e.payWith)) || null,
+              e.shared ? 1 : 0,
             );
           }
         }
@@ -748,7 +751,7 @@ async function assertGoal(userId: string, goalId: string | null | undefined) {
 export async function createEntry(
   userId: string,
   blockId: string,
-  init: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "target" | "ref" | "sign" | "payWith">> = {},
+  init: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "target" | "ref" | "sign" | "payWith" | "shared">> = {},
 ): Promise<Entry> {
   const db = getDb();
   const block = await ownedBlock(userId, blockId);
@@ -759,8 +762,8 @@ export async function createEntry(
     .get(blockId))!.p as number;
   const id = uid();
   await db.prepare(
-    `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, target, position, ref, sign, pay_with)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT INTO entries (id, block_id, user_id, description, amount, date, status, goal_id, target, position, ref, sign, pay_with, shared)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     id,
     blockId,
@@ -775,6 +778,7 @@ export async function createEntry(
     init.ref ?? null,
     init.sign ?? 1,
     init.payWith ?? null,
+    init.shared ? 1 : 0,
   );
   return mapEntry(await ownedEntry(userId, id));
 }
@@ -782,7 +786,7 @@ export async function createEntry(
 export async function updateEntry(
   userId: string,
   id: string,
-  patch: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "target" | "extra" | "ref" | "sign" | "payWith">>,
+  patch: Partial<Pick<Entry, "description" | "amount" | "date" | "status" | "goalId" | "target" | "extra" | "ref" | "sign" | "payWith" | "shared">>,
 ) {
   const db = getDb();
   const current = await ownedEntry(userId, id);
@@ -803,6 +807,7 @@ export async function updateEntry(
   if (patch.ref !== undefined) add("ref", patch.ref);
   if (patch.sign !== undefined) add("sign", patch.sign);
   if (patch.payWith !== undefined) add("pay_with", patch.payWith);
+  if (patch.shared !== undefined) add("shared", patch.shared ? 1 : 0);
   if (patch.extra !== undefined) {
     const block = mapBlock(await ownedBlock(userId, current.block_id));
     const allowed = new Set(block.columns.map((c) => c.id));

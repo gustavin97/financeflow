@@ -9,6 +9,7 @@ import { MembersDialog } from "@/components/MembersEditor";
 import { BlockTable } from "@/components/sheet/BlockTable";
 import { NewBlockDialog } from "@/components/sheet/blockDialogs";
 import { ImportDialog } from "@/components/sheet/ImportDialog";
+import { SharedRows } from "@/components/sheet/SharedRows";
 import { SortableGrid } from "@/components/sheet/SortableGrid";
 import { TotalTable } from "@/components/sheet/TotalTable";
 import { DistributionBar } from "@/components/sheet/DistributionBar";
@@ -200,6 +201,8 @@ function MonthView({ ym }: { ym: string }) {
                 ))}
               </div>
             )}
+
+            {filter === "shared" && <SharedRows blocks={data.blocks} members={members} actions={m} />}
 
             <SortableGrid
               className="grid items-start gap-4"

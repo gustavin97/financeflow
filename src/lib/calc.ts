@@ -5,6 +5,7 @@
  *   block:<id>                    total de uma tabela (inclusive de outra tabela de total)
  *   kind:<tipo>                   soma de todas as tabelas do tipo (income | expense | savings)
  *   kind:<tipo>:<pessoa|shared>   idem, só as tabelas de uma pessoa ou do conjunto
+ *                                 (linhas "conjunto" de uma tabela de pessoa contam no conjunto)
  *   balance[:<pessoa|shared>]     saldo do mês (receitas − despesas − cofrinho)
  *   carry                         saldo acumulado dos meses anteriores
  *
@@ -94,11 +95,18 @@ export function buildCalc(blocks: Block[], members: Member[], carry: Carry): Mon
     const t = cashTotals(b, cardSet);
     // nas referências, um cartão vale a fatura (compras marcadas); as outras tabelas, só as linhas marcadas
     plainTotals.set(b.id, cards.get(b.id)?.net ?? t.total);
-    for (const s of [scope("all"), scope(ownerScope(b, members))]) {
-      if (b.kind === "income") (s.income += t.total), (s.incomeDone += t.done);
-      else if (b.kind === "expense") (s.expense += t.total), (s.expenseDone += t.done);
-      else (s.savings += t.total), (s.savingsDone += t.done);
-    }
+    // linhas marcadas como "conjunto" numa tabela de pessoa entram nas contas do conjunto
+    const own = ownerScope(b, members);
+    const sharedRows = own === "shared" ? [] : b.entries.filter((e) => e.shared);
+    const st = sharedRows.length ? cashTotals({ ...b, entries: sharedRows }, cardSet) : { total: 0, done: 0 };
+    const add = (s: ScopeTotals, total: number, done: number) => {
+      if (b.kind === "income") (s.income += total), (s.incomeDone += done);
+      else if (b.kind === "expense") (s.expense += total), (s.expenseDone += done);
+      else (s.savings += total), (s.savingsDone += done);
+    };
+    add(scope("all"), t.total, t.done);
+    add(scope(own), t.total - st.total, t.done - st.done);
+    if (st.total || st.done) add(scope("shared"), st.total, st.done);
   }
   for (const s of scopes.values()) {
     s.balance = s.income - s.expense - s.savings;

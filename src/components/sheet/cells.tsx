@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarDays, Check, CreditCard } from "lucide-react";
+import { CalendarDays, Check, CreditCard, User, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { centsToInput, fmtNum, fmtPlain, parseMoney } from "@/lib/money";
-import type { Status } from "@/lib/types";
+import { SHARED_COLOR } from "@/lib/kinds";
+import type { Member, Status } from "@/lib/types";
 
 export type Nav = "enter" | "down" | "up";
 
@@ -302,6 +303,39 @@ export function DateCell({
       max={max}
       onCommit={onCommit}
     />
+  );
+}
+
+/* ---------------------- individual / conjunto ---------------------- */
+/** Linha de uma tabela de pessoa: só dela (individual) ou do casal (conjunto). */
+export function SharedCell({ shared, owner, onToggle }: { shared: boolean; owner: Member; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={shared}
+      aria-label={shared ? "Conjunto (clique para individual)" : `Individual de ${owner.name} (clique para conjunto)`}
+      title={
+        shared
+          ? `Do conjunto: entra nas contas do casal e aparece em “Conjunto”, como lançada por ${owner.name}`
+          : `Só de ${owner.name}. Clique para tornar do conjunto`
+      }
+      className="flex h-[37px] w-full items-center gap-1.5 px-2 text-left text-[14.5px] hover:bg-head"
+    >
+      {shared ? (
+        <>
+          <Users size={15} style={{ color: SHARED_COLOR }} />
+          <span className="font-medium" style={{ color: SHARED_COLOR }}>
+            Conjunto
+          </span>
+        </>
+      ) : (
+        <>
+          <User size={15} style={{ color: owner.color }} />
+          <span className="text-muted">Individual</span>
+        </>
+      )}
+    </button>
   );
 }
 
