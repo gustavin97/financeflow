@@ -731,6 +731,16 @@ export async function reorderBlocks(userId: string, ym: string, ids: string[]) {
   });
 }
 
+/** `ids`: as linhas da tabela, na nova ordem */
+export async function reorderEntries(userId: string, blockId: string, ids: string[]) {
+  await ownedBlock(userId, blockId);
+  const db = getDb();
+  const st = db.prepare("UPDATE entries SET position = ? WHERE id = ? AND block_id = ?");
+  await db.transaction(async () => {
+    for (const [i, id] of ids.entries()) await st.run(i, id, blockId);
+  });
+}
+
 export async function completeBlock(userId: string, id: string, status: Status) {
   await ownedBlock(userId, id);
   await getDb().prepare("UPDATE entries SET status = ? WHERE block_id = ?").run(status, id);

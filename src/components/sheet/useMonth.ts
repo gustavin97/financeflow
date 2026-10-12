@@ -177,6 +177,19 @@ export function useMonth(ym: string) {
     api(`/api/entries/${id}`, { method: "PATCH", body: patch }).catch(fail);
   };
 
+  /** troca a linha de lugar com a de cima (-1) ou a de baixo (1) */
+  const moveEntry = (blockId: string, id: string, dir: -1 | 1) => {
+    const block = data?.blocks.find((b) => b.id === blockId);
+    if (!block) return;
+    const i = block.entries.findIndex((e) => e.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= block.entries.length) return;
+    const entries = [...block.entries];
+    [entries[i], entries[j]] = [entries[j], entries[i]];
+    mapBlocks((b) => (b.id === blockId ? { ...b, entries: entries.map((e, k) => ({ ...e, position: k })) } : b));
+    api("/api/entries/reorder", { body: { blockId, ids: entries.map((e) => e.id) } }).catch(fail);
+  };
+
   const removeEntry = (blockId: string, id: string) => {
     mapBlocks((b) =>
       b.id === blockId ? { ...b, entries: b.entries.filter((e) => e.id !== id) } : b,
@@ -256,6 +269,7 @@ export function useMonth(ym: string) {
     completeBlock,
     addEntry,
     patchEntry,
+    moveEntry,
     removeEntry,
     addInstallment,
     removeInstallment,

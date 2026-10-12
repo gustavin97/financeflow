@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarRange, Check, CreditCard, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
+import { CalendarRange, Check, CreditCard, GripVertical, MoreHorizontal, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CARD_META, KIND_META } from "@/lib/kinds";
 import { fmtBRL, fmtNum, fmtPct, fmtPlain, parseMoney } from "@/lib/money";
@@ -12,7 +12,7 @@ import type { Block, Entry, ExtraColumn, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog } from "./blockDialogs";
-import { DateCell, FixedCell, MoneyCell, PayWithCell, SharedCell, StatusCell, TextCell, type Nav } from "./cells";
+import { DateCell, FixedCell, MoneyCell, PayWithCell, RowGutter, SharedCell, StatusCell, TextCell, type Nav } from "./cells";
 import { BudgetDialog, ColumnsDialog, InstallmentDialog } from "./dialogs";
 import type { useMonth } from "./useMonth";
 
@@ -23,6 +23,7 @@ type Actions = Pick<
   | "completeBlock"
   | "addEntry"
   | "patchEntry"
+  | "moveEntry"
   | "removeEntry"
   | "addInstallment"
   | "removeInstallment"
@@ -605,15 +606,12 @@ function EntryRow({
   return (
     <tr className="group hover:bg-[#f6faf7]">
       <td className="gutter">
-        <span className="group-hover:hidden">{i + 1}</span>
-        <button
-          className="hidden h-[37px] w-full items-center justify-center text-faint hover:bg-red-50 hover:text-expense group-hover:flex focus-visible:flex"
-          aria-label={`Excluir linha ${i + 1}`}
-          title="Excluir linha"
-          onClick={() => actions.removeEntry(block.id, e.id)}
-        >
-          <X size={15} />
-        </button>
+        <RowGutter
+          index={i}
+          count={block.entries.length}
+          onMove={(dir) => actions.moveEntry(block.id, e.id, dir)}
+          onRemove={() => actions.removeEntry(block.id, e.id)}
+        />
       </td>
       <td>
         <div className="flex items-center">

@@ -102,6 +102,11 @@ export const reorderSchema = z.object({
   ids: z.array(z.string().min(1).max(64)).max(200),
 });
 
+export const entryReorderSchema = z.object({
+  blockId: z.string().min(1).max(64),
+  ids: z.array(z.string().min(1).max(64)).max(1000),
+});
+
 export const completeSchema = z.object({ status: z.enum(["pending", "done"]) });
 
 export const entryCreateSchema = z.object({

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, GripVertical, MoreHorizontal, Plus, X } from "lucide-react";
+import { AlertTriangle, GripVertical, MoreHorizontal, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { refLabel, refOptions, type MonthCalc } from "@/lib/calc";
 import { KIND_META } from "@/lib/kinds";
@@ -9,12 +9,12 @@ import type { Block, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog, RefSelect } from "./blockDialogs";
-import { MoneyCell, StatusCell, TextCell } from "./cells";
+import { MoneyCell, RowGutter, StatusCell, TextCell } from "./cells";
 import type { useMonth } from "./useMonth";
 
 type Actions = Pick<
   ReturnType<typeof useMonth>,
-  "patchBlock" | "removeBlock" | "completeBlock" | "addEntry" | "patchEntry" | "removeEntry"
+  "patchBlock" | "removeBlock" | "completeBlock" | "addEntry" | "patchEntry" | "moveEntry" | "removeEntry"
 >;
 
 /**
@@ -128,14 +128,12 @@ export function TotalTable({
               return (
                 <tr key={e.id} className="group hover:bg-[#f6faf7]">
                   <td className="gutter">
-                    <span className="group-hover:hidden">{i + 1}</span>
-                    <button
-                      className="hidden h-[37px] w-full items-center justify-center text-faint hover:bg-red-50 hover:text-expense group-hover:flex focus-visible:flex"
-                      aria-label={`Excluir linha ${i + 1}`}
-                      onClick={() => actions.removeEntry(block.id, e.id)}
-                    >
-                      <X size={15} />
-                    </button>
+                    <RowGutter
+                      index={i}
+                      count={block.entries.length}
+                      onMove={(dir) => actions.moveEntry(block.id, e.id, dir)}
+                      onRemove={() => actions.removeEntry(block.id, e.id)}
+                    />
                   </td>
                   <td className="!p-0">
                     <StatusCell

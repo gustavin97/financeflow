@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, CreditCard, Pin, User, Users } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronUp, CreditCard, Pin, User, Users, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { centsToInput, fmtNum, fmtPlain, parseMoney } from "@/lib/money";
 import { SHARED_COLOR } from "@/lib/kinds";
@@ -303,6 +303,49 @@ export function DateCell({
       max={max}
       onCommit={onCommit}
     />
+  );
+}
+
+/* ----------------------------- margem ----------------------------- */
+/**
+ * Margem da linha: mostra o número; ao passar o mouse (ou com o foco), as
+ * setas sobem/descem a linha e o X exclui.
+ */
+export function RowGutter({
+  index,
+  count,
+  onMove,
+  onRemove,
+}: {
+  index: number;
+  count: number;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const n = index + 1;
+  const arrow = "flex h-[18px] w-[18px] items-center justify-center text-faint hover:bg-head hover:text-ink disabled:invisible";
+  return (
+    <>
+      <span className="group-hover:hidden group-focus-within:hidden">{n}</span>
+      <span className="hidden h-[37px] items-center group-hover:flex group-focus-within:flex">
+        <span className="flex flex-col">
+          <button className={arrow} aria-label={`Mover linha ${n} para cima`} title="Mover para cima" disabled={index === 0} onClick={() => onMove(-1)}>
+            <ChevronUp size={14} />
+          </button>
+          <button className={arrow} aria-label={`Mover linha ${n} para baixo`} title="Mover para baixo" disabled={index >= count - 1} onClick={() => onMove(1)}>
+            <ChevronDown size={14} />
+          </button>
+        </span>
+        <button
+          className="flex h-full flex-1 items-center justify-center text-faint hover:bg-red-50 hover:text-expense"
+          aria-label={`Excluir linha ${n}`}
+          title="Excluir linha"
+          onClick={onRemove}
+        >
+          <X size={15} />
+        </button>
+      </span>
+    </>
   );
 }
 
