@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Check, CreditCard, User, Users } from "lucide-react";
+import { CalendarDays, Check, CreditCard, Pin, User, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { centsToInput, fmtNum, fmtPlain, parseMoney } from "@/lib/money";
 import { SHARED_COLOR } from "@/lib/kinds";
@@ -303,6 +303,24 @@ export function DateCell({
       max={max}
       onCommit={onCommit}
     />
+  );
+}
+
+/* ------------------------------ fixa ------------------------------ */
+/** Linha fixa: vai junto quando o mês seguinte é aberto copiando este. */
+export function FixedCell({ fixed, onToggle }: { fixed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={fixed}
+      aria-label={fixed ? "Fixa (clique para não copiar no próximo mês)" : "Não fixa (clique para copiar no próximo mês)"}
+      title={fixed ? "Fixa: vem para o próximo mês ao copiar" : "Não é copiada para o próximo mês. Clique para fixar"}
+      className="flex h-[37px] w-full items-center justify-center gap-1.5 px-2 text-[14.5px] hover:bg-head"
+    >
+      <Pin size={15} className={fixed ? "text-brand" : "text-faint"} fill={fixed ? "currentColor" : "none"} />
+      <span className={fixed ? "font-medium text-brand" : "text-faint"}>Fixa</span>
+    </button>
   );
 }
 

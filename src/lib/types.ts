@@ -39,6 +39,8 @@ export interface Entry {
   ref: string | null;
   /** tabelas de total: 1 soma, -1 subtrai */
   sign: 1 | -1;
+  /** linha fixa: é copiada para o mês seguinte (as outras não) */
+  fixed: boolean;
   /** linha de uma tabela de pessoa que é do conjunto: entra nas contas do conjunto */
   shared: boolean;
   /** despesas: id do cartão de crédito que paga a linha. null = sai do saldo */

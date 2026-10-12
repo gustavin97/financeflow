@@ -15,7 +15,7 @@ const AUTO_OPTIONS: { value: AutoMonth; title: string; text: string }[] = [
   {
     value: "copy",
     title: "Copiar o mês anterior",
-    text: "Tabelas e lançamentos fixos (salário, aluguel, assinaturas) voltam como pendentes, com as datas no novo mês.",
+    text: "Tabelas e as linhas marcadas como fixas (salário, aluguel, assinaturas) voltam como pendentes, com as datas no novo mês.",
   },
   { value: "structure", title: "Copiar só as tabelas", text: "Mesmas tabelas, colunas e limites, sem lançamentos." },
   { value: "off", title: "Não abrir sozinho", text: "No mês novo, você escolhe como começar." },

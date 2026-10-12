@@ -12,7 +12,7 @@ import type { Block, Entry, ExtraColumn, Member } from "@/lib/types";
 import { MemberTag } from "../MembersEditor";
 import { Dropdown, MenuItem } from "../ui/Dropdown";
 import { BlockSettingsDialog } from "./blockDialogs";
-import { DateCell, MoneyCell, PayWithCell, SharedCell, StatusCell, TextCell, type Nav } from "./cells";
+import { DateCell, FixedCell, MoneyCell, PayWithCell, SharedCell, StatusCell, TextCell, type Nav } from "./cells";
 import { BudgetDialog, ColumnsDialog, InstallmentDialog } from "./dialogs";
 import type { useMonth } from "./useMonth";
 
@@ -114,6 +114,7 @@ export function BlockTable({
   // tabela de uma pessoa: cada linha pode ser só dela ou do conjunto
   const showShared = !!owner && !card;
   const showSaldo = card ? card.limit !== null : !!running;
+  const fixedCount = block.entries.filter((e) => e.fixed).length;
   const sharedCount = showShared ? block.entries.filter((e) => e.shared).length : 0;
   const onCardTotal = showPayWith
     ? block.entries.reduce((s, e) => s + (e.payWith && calc.cards.has(e.payWith) ? e.amount : 0), 0)
@@ -170,6 +171,7 @@ export function BlockTable({
     152 +
     (isSavings ? 128 : 0) +
     128 +
+    88 +
     (showPayWith ? 150 : 0) +
     (showShared ? 136 : 0) +
     extras.length * 156 +
@@ -179,7 +181,7 @@ export function BlockTable({
   const base = running ? calc.resolve(running.source) : income;
   const limit = budgetLimit(block, base);
   const cols =
-    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + 1 + (showPayWith ? 1 : 0) + (showShared ? 1 : 0) + extras.length;
+    3 + (showSaldo ? 1 : 0) + (isSavings ? 1 : 0) + 2 + (showPayWith ? 1 : 0) + (showShared ? 1 : 0) + extras.length;
 
   return (
     <section className="panel-open" aria-label={`Tabela ${block.name}`}>
@@ -293,6 +295,7 @@ export function BlockTable({
             <col style={{ width: 152 }} />
             {isSavings && <col style={{ width: 128 }} />}
             <col style={{ width: 128 }} />
+            <col style={{ width: 88 }} />
             {showPayWith && <col style={{ width: 150 }} />}
             {showShared && <col style={{ width: 136 }} />}
             {extras.map((c) => (
@@ -323,6 +326,7 @@ export function BlockTable({
               <th>{card ? "Data" : meta.dateLabel}</th>
               {isSavings && <th className="!text-right">Meta (R$)</th>}
               <th title="Só as linhas marcadas entram no total">Status</th>
+              <th title="Linhas fixas são copiadas para o próximo mês; as outras não">Fixa</th>
               {showPayWith && <th title="Saldo: sai do dinheiro da tabela. Cartão: entra na fatura e desconta o limite">Pagar com</th>}
               {showShared && (
                 <th title="Individual: só da pessoa. Conjunto: entra nas contas do casal e aparece em “Conjunto”">De quem</th>
@@ -450,7 +454,7 @@ export function BlockTable({
                         }
                       />
                     </td>
-                    <td colSpan={extras.length + 1} />
+                    <td colSpan={extras.length + 2} />
                   </tr>
                 ))}
               </>
@@ -470,6 +474,9 @@ export function BlockTable({
               {isSavings && <td className="text-right">{targetTotal ? fmtNum(targetTotal) : ""}</td>}
               <td className="whitespace-nowrap text-[14px] font-medium text-muted">
                 {count > 0 ? `${doneCount} de ${count} ${card ? "na fatura" : DONE_PLURAL[block.kind]}` : ""}
+              </td>
+              <td className="whitespace-nowrap text-[14px] font-medium text-muted">
+                {fixedCount ? `${fixedCount} ${fixedCount === 1 ? "fixa" : "fixas"}` : ""}
               </td>
               {showPayWith && (
                 <td className="whitespace-nowrap text-[14px] font-medium" style={{ color: CARD_META.color }}>
@@ -671,6 +678,9 @@ function EntryRow({
           doneLabel={block.card || onCard ? CARD_META.done : meta.done}
           onToggle={() => patch({ status: e.status === "done" ? "pending" : "done" })}
         />
+      </td>
+      <td>
+        <FixedCell fixed={e.fixed} onToggle={() => patch({ fixed: !e.fixed })} />
       </td>
       {cards && (
         <td>

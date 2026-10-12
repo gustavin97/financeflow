@@ -200,6 +200,8 @@ create table if not exists entries (
   sign        integer not null default 1 check (sign in (1,-1)),
   -- despesas: cartão que paga a linha (NULL = sai do saldo)
   pay_with    text references blocks(id) on delete set null,
+  -- linha fixa (1): copiada para o mês seguinte; as outras (0) não
+  fixed       integer not null default 0,
   -- linha de uma tabela de pessoa que é do conjunto (1) ou só dela (0)
   shared      integer not null default 0,
   -- parcela de uma compra parcelada
@@ -212,6 +214,8 @@ create table if not exists entries (
 alter table entries add column if not exists target integer;
 -- bancos criados antes da linha individual/conjunto
 alter table entries add column if not exists shared integer not null default 0;
+-- bancos criados antes da linha fixa
+alter table entries add column if not exists fixed integer not null default 0;
 
 create index if not exists idx_entries_block    on entries(block_id);
 create index if not exists idx_entries_user     on entries(user_id);

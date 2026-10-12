@@ -32,7 +32,7 @@ export function StartMonth({
     {
       mode: "copy",
       title: `Copiar de ${previousYm ? ymLabel(previousYm) : "mês anterior"}`,
-      text: "Traz as tabelas e os lançamentos fixos (salário, aluguel, assinaturas). Tudo volta como pendente e as datas acompanham o novo mês.",
+      text: "Traz as tabelas e só as linhas marcadas como fixas (salário, aluguel, assinaturas). Tudo volta como pendente e as datas acompanham o novo mês.",
       icon: <Copy size={18} />,
       show: !!previousYm,
       primary: true,
